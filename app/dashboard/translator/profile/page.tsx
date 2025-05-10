@@ -25,7 +25,6 @@ const LANGUAGES = [
   "German",
   "Italian",
   "Portuguese",
-  "Russian",
   "Chinese",
   "Japanese",
   "Korean",
