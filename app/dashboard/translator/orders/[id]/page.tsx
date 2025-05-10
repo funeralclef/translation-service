@@ -1,0 +1,526 @@
+"use client"
+
+import { Input } from "@/components/ui/input"
+
+import { Label } from "@/components/ui/label"
+
+import type React from "react"
+
+import { useState, useEffect } from "react"
+import { useRouter, useParams } from "next/navigation"
+import { createClientComponentClient } from "@/utils/supabase/client"
+import { useAuth } from "@/components/auth-provider"
+import DashboardLayout from "@/components/dashboard-layout"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Textarea } from "@/components/ui/textarea"
+import { FileText, Download, Clock, User, Upload, Loader2, CheckCircle2 } from "lucide-react"
+
+interface Order {
+  id: string
+  customer_id: string
+  source_language: string
+  target_language: string
+  deadline: string
+  tags: string[]
+  comment: string
+  document_url: string
+  status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
+  cost: number
+  created_at: string
+}
+
+interface OrderAnalysis {
+  classification: string[]
+  word_count: number
+  complexity_score: number
+  estimated_hours: number
+}
+
+interface Customer {
+  id: string
+  full_name: string
+  email: string
+}
+
+export default function TranslatorOrderDetail() {
+  const router = useRouter()
+  const params = useParams()
+  const orderId = params.id as string
+  const { user } = useAuth()
+  const supabase = createClientComponentClient()
+
+  const [order, setOrder] = useState<Order | null>(null)
+  const [analysis, setAnalysis] = useState<OrderAnalysis | null>(null)
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [translatedFile, setTranslatedFile] = useState<File | null>(null)
+  const [notes, setNotes] = useState("")
+  const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchOrderDetails = async () => {
+      try {
+        if (!user) {
+          router.push("/auth/login")
+          return
+        }
+
+        // Check if user role is translator
+        if (user.role !== "translator") {
+          router.push("/dashboard")
+          return
+        }
+
+        // Check if translator is assigned to this order
+        const { data: assignment, error: assignmentError } = await supabase
+          .from("order_assignments")
+          .select("*")
+          .eq("order_id", orderId)
+          .eq("translator_id", user.id)
+          .single()
+
+        if (assignmentError) {
+          // Translator is not assigned to this order
+          router.push("/dashboard/translator/jobs")
+          return
+        }
+
+        // Fetch order details
+        const { data: orderData, error: orderError } = await supabase
+          .from("orders")
+          .select("*")
+          .eq("id", orderId)
+          .single()
+
+        if (orderError) throw orderError
+
+        setOrder(orderData)
+
+        // Fetch customer details
+        const { data: customerData, error: customerError } = await supabase
+          .from("users")
+          .select("id, full_name, email")
+          .eq("id", orderData.customer_id)
+          .single()
+
+        if (!customerError) {
+          setCustomer(customerData)
+        }
+
+        // Fetch order analysis
+        const { data: analysisData, error: analysisError } = await supabase
+          .from("order_analysis")
+          .select("*")
+          .eq("order_id", orderId)
+          .single()
+
+        if (!analysisError) {
+          setAnalysis(analysisData)
+        }
+      } catch (error) {
+        console.error("Error fetching order details:", error)
+        setError("Failed to load order details")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    if (orderId) {
+      fetchOrderDetails()
+    }
+  }, [supabase, orderId, router, user])
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setTranslatedFile(e.target.files[0])
+    }
+  }
+
+  const startWorking = async () => {
+    if (!order) return
+
+    try {
+      setSubmitting(true)
+
+      // Update order status to in_progress
+      const { error } = await supabase.from("orders").update({ status: "in_progress" }).eq("id", order.id)
+
+      if (error) throw error
+
+      // Update local state
+      setOrder({ ...order, status: "in_progress" })
+      setSuccess("You've started working on this order")
+    } catch (error) {
+      console.error("Error starting work:", error)
+      setError("Failed to update order status")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const submitTranslation = async () => {
+    if (!order || !translatedFile) return
+
+    try {
+      setSubmitting(true)
+
+      // Upload translated file
+      const fileExt = translatedFile.name.split(".").pop()
+      const fileName = `translated_${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+      const filePath = `translations/${order.id}/${fileName}`
+
+      const { error: uploadError } = await supabase.storage.from("documents").upload(filePath, translatedFile)
+
+      if (uploadError) throw uploadError
+
+      // Get the public URL for the uploaded file
+      const { data: urlData } = supabase.storage.from("documents").getPublicUrl(filePath)
+      const translatedUrl = urlData.publicUrl
+
+      // Update order status to completed
+      const { error: updateError } = await supabase
+        .from("orders")
+        .update({
+          status: "completed",
+          translated_document_url: translatedUrl,
+        })
+        .eq("id", order.id)
+
+      if (updateError) throw updateError
+
+      // Add translation notes
+      if (notes.trim()) {
+        const { error: notesError } = await supabase.from("translation_notes").insert({
+          order_id: order.id,
+          translator_id: user.id,
+          notes: notes.trim(),
+        })
+
+        if (notesError) throw notesError
+      }
+
+      // Update local state
+      setOrder({ ...order, status: "completed" })
+      setSuccess("Translation submitted successfully")
+    } catch (error) {
+      console.error("Error submitting translation:", error)
+      setError("Failed to submit translation")
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString()
+  }
+
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="flex h-40 items-center justify-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-t-2 border-primary"></div>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  if (error || !order) {
+    return (
+      <DashboardLayout>
+        <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
+          <h3 className="mb-2 text-lg font-semibold">Error</h3>
+          <p className="mb-6 text-sm text-muted-foreground">{error || "Order not found"}</p>
+          <Button onClick={() => router.push("/dashboard/translator/jobs")}>Back to Jobs</Button>
+        </div>
+      </DashboardLayout>
+    )
+  }
+
+  return (
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
+            <p className="text-muted-foreground">Order ID: {order.id}</p>
+          </div>
+          <Button variant="outline" onClick={() => router.push("/dashboard/translator/jobs")}>
+            Back to Jobs
+          </Button>
+        </div>
+
+        {success && (
+          <Alert>
+            <AlertDescription>{success}</AlertDescription>
+          </Alert>
+        )}
+
+        {error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        <div className="grid gap-6 md:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <div className="flex justify-between items-center">
+                <CardTitle>Order Information</CardTitle>
+                <Badge
+                  variant={
+                    order.status === "completed" ? "success" : order.status === "in_progress" ? "default" : "secondary"
+                  }
+                >
+                  {order.status === "assigned"
+                    ? "Assigned"
+                    : order.status === "in_progress"
+                      ? "In Progress"
+                      : "Completed"}
+                </Badge>
+              </div>
+              <CardDescription>Details about the translation order</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Customer</span>
+                </div>
+                {customer ? (
+                  <div className="text-sm">
+                    <div className="font-medium">{customer.full_name}</div>
+                    <div className="text-muted-foreground">{customer.email}</div>
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">Customer information not available</div>
+                )}
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Document</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="text-sm">{order.document_url.split("/").pop()?.split("?")[0] || "Document"}</div>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href={order.document_url} target="_blank" rel="noopener noreferrer">
+                      <Download className="mr-2 h-4 w-4" />
+                      Download
+                    </a>
+                  </Button>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium">Source Language</div>
+                  <div>{order.source_language}</div>
+                </div>
+                <div>
+                  <div className="text-sm font-medium">Target Language</div>
+                  <div>{order.target_language}</div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Timeline</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="text-sm font-medium">Created</div>
+                    <div>{formatDate(order.created_at)}</div>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium">Deadline</div>
+                    <div className="flex items-center">
+                      {formatDate(order.deadline)}
+                      {new Date(order.deadline) < new Date() ? (
+                        <Badge variant="destructive" className="ml-2">
+                          Overdue
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="ml-2">
+                          {Math.ceil(
+                            (new Date(order.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
+                          )}{" "}
+                          days left
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              <div className="space-y-2">
+                <div className="font-medium">Tags</div>
+                <div className="flex flex-wrap gap-2">
+                  {order.tags.map((tag) => (
+                    <Badge key={tag} variant="secondary">
+                      {tag}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {order.comment && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="font-medium">Customer Comment</div>
+                    <div className="text-sm">{order.comment}</div>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Analysis</CardTitle>
+                <CardDescription>Document analysis and payment information</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {analysis ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm font-medium">Word Count</div>
+                        <div>{analysis.word_count}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Complexity Score</div>
+                        <div>{analysis.complexity_score.toFixed(2)}</div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-sm font-medium">Estimated Hours</div>
+                        <div>{analysis.estimated_hours.toFixed(2)}</div>
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium">Payment</div>
+                        <div className="font-bold">${order.cost.toFixed(2)}</div>
+                      </div>
+                    </div>
+
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <div className="font-medium">Classification</div>
+                      <div className="flex flex-wrap gap-2">
+                        {analysis.classification.map((tag) => (
+                          <Badge key={tag} variant="outline">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground">No analysis data available</div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Submit Translation</CardTitle>
+                <CardDescription>
+                  {order.status === "completed"
+                    ? "This order has been completed"
+                    : "Upload your translated document and add notes"}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {order.status === "completed" ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
+                    <h3 className="text-lg font-semibold">Translation Completed</h3>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      You have successfully completed this translation order.
+                    </p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <Label htmlFor="translatedFile">Upload Translated Document</Label>
+                      <Input
+                        id="translatedFile"
+                        type="file"
+                        onChange={handleFileChange}
+                        disabled={order.status === "assigned" || submitting}
+                      />
+                      {translatedFile && (
+                        <p className="text-sm text-muted-foreground">Selected file: {translatedFile.name}</p>
+                      )}
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Translation Notes (Optional)</Label>
+                      <Textarea
+                        id="notes"
+                        placeholder="Add any notes about the translation for the customer"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        disabled={order.status === "assigned" || submitting}
+                        className="min-h-[100px]"
+                      />
+                    </div>
+
+                    {order.status === "assigned" ? (
+                      <Button onClick={startWorking} className="w-full" disabled={submitting}>
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Start Working on This Order"
+                        )}
+                      </Button>
+                    ) : (
+                      <Button onClick={submitTranslation} className="w-full" disabled={!translatedFile || submitting}>
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Submitting...
+                          </>
+                        ) : (
+                          <>
+                            <Upload className="mr-2 h-4 w-4" />
+                            Submit Translation
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </DashboardLayout>
+  )
+}

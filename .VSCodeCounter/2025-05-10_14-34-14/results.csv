@@ -1,0 +1,27 @@
+"filename", "language", "TypeScript JSX", "CSS", "TypeScript", "comment", "blank", "total"
+"d:\University\Diploma\EchoPulse\translation-service\app\api\analyze-document\route.ts", "TypeScript", 0, 0, 34, 8, 8, 50
+"d:\University\Diploma\EchoPulse\translation-service\app\auth\login\loading.tsx", "TypeScript JSX", 3, 0, 0, 0, 1, 4
+"d:\University\Diploma\EchoPulse\translation-service\app\auth\login\page.tsx", "TypeScript JSX", 100, 0, 0, 3, 12, 115
+"d:\University\Diploma\EchoPulse\translation-service\app\auth\register\page.tsx", "TypeScript JSX", 153, 0, 0, 3, 15, 171
+"d:\University\Diploma\EchoPulse\translation-service\app\auth\select-role\page.tsx", "TypeScript JSX", 102, 0, 0, 2, 16, 120
+"d:\University\Diploma\EchoPulse\translation-service\app\auth\verification\page.tsx", "TypeScript JSX", 32, 0, 0, 0, 3, 35
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\orders\[id]\page.tsx", "TypeScript JSX", 572, 0, 0, 18, 75, 665
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\orders\loading.tsx", "TypeScript JSX", 3, 0, 0, 0, 1, 4
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\orders\page.tsx", "TypeScript JSX", 247, 0, 0, 10, 36, 293
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\page.tsx", "TypeScript JSX", 144, 0, 0, 5, 26, 175
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\users\[id]\page.tsx", "TypeScript JSX", 398, 0, 0, 8, 45, 451
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\users\loading.tsx", "TypeScript JSX", 3, 0, 0, 0, 1, 4
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\admin\users\page.tsx", "TypeScript JSX", 175, 0, 0, 1, 24, 200
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\customer\orders\[id]\page.tsx", "TypeScript JSX", 328, 0, 0, 3, 41, 372
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\customer\orders\create\page.tsx", "TypeScript JSX", 460, 0, 0, 9, 59, 528
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\customer\orders\page.tsx", "TypeScript JSX", 143, 0, 0, 1, 13, 157
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\page.tsx", "TypeScript JSX", 173, 0, 0, 0, 15, 188
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\settings\page.tsx", "TypeScript JSX", 251, 0, 0, 8, 37, 296
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\translator\jobs\page.tsx", "TypeScript JSX", 473, 0, 0, 16, 53, 542
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\translator\orders\[id]\page.tsx", "TypeScript JSX", 451, 0, 0, 13, 63, 527
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\translator\profile\page.tsx", "TypeScript JSX", 439, 0, 0, 7, 46, 492
+"d:\University\Diploma\EchoPulse\translation-service\app\dashboard\translator\translations\page.tsx", "TypeScript JSX", 400, 0, 0, 7, 40, 447
+"d:\University\Diploma\EchoPulse\translation-service\app\globals.css", "CSS", 0, 90, 0, 0, 5, 95
+"d:\University\Diploma\EchoPulse\translation-service\app\layout.tsx", "TypeScript JSX", 26, 0, 0, 0, 4, 30
+"d:\University\Diploma\EchoPulse\translation-service\app\page.tsx", "TypeScript JSX", 86, 0, 0, 0, 2, 88
+"Total", "-", 5162, 90, 34, 122, 641, 6049
