@@ -113,22 +113,56 @@ export default function CreateOrder() {
     setError(null)
 
     try {
-      // Upload file to get a temporary URL for analysis
-      const fileExt = file.name.split(".").pop()
-      const fileName = `temp/${Math.random().toString(36).substring(2, 15)}.${fileExt}`
+      // Check file type before uploading
+      const fileExt = file.name.split(".").pop()?.toLowerCase();
+      if (!fileExt || !['pdf', 'docx', 'txt'].includes(fileExt)) {
+        throw new Error(`Unsupported file type: ${fileExt || 'unknown'}. Only PDF, DOCX, and TXT files are supported.`);
+      }
+      
+      // Create a unique but readable file name
+      const timestamp = Date.now();
+      const fileName = `temp/doc_${timestamp}.${fileExt}`;
 
-      const { error: uploadError, data: uploadData } = await supabase.storage
+      console.log("Uploading file for analysis:", fileName)
+      const { error: uploadError } = await supabase.storage
         .from("documents")
         .upload(fileName, file, { upsert: true })
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error("Error uploading file:", uploadError)
+        throw new Error(`Failed to upload file: ${uploadError.message}`)
+      }
 
-      // Get the public URL for the uploaded file
+      // Get the public URL
       const { data: urlData } = supabase.storage.from("documents").getPublicUrl(fileName)
+      
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error("Failed to get document URL. Please check your storage bucket permissions.")
+      }
+      
       const documentUrl = urlData.publicUrl
+      console.log("Got public URL:", documentUrl)
+      
+      // Add a small delay to ensure the file is available (propagation delay)
+      console.log("Waiting for file to be accessible...")
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Verify the file exists before proceeding
+      try {
+        const headResponse = await fetch(documentUrl, { method: 'HEAD' });
+        if (!headResponse.ok) {
+          console.error(`File not accessible: ${headResponse.status} ${headResponse.statusText}`);
+          throw new Error(`Document file is not accessible. Status: ${headResponse.status}`);
+        }
+        console.log("File verified accessible");
+      } catch (accessError) {
+        console.error("Error verifying file access:", accessError);
+        throw new Error("Unable to access the uploaded file. Please check storage permissions.");
+      }
 
       // Call the analyze document API
-      const response = await fetch("/api/analyze-document", {
+      console.log("Calling analyze-document-alt API with URL:", documentUrl);
+      const response = await fetch("/api/analyze-document-alt", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -140,11 +174,15 @@ export default function CreateOrder() {
         }),
       })
 
+      // Try to parse the error message from the response
       if (!response.ok) {
-        throw new Error("Failed to analyze document")
+        console.log("Response not ok:", response)
+        const errorData = await response.json().catch((rr) => ({ error: "Failed to analyze document" }))
+        throw new Error(errorData.error || "Failed to analyze document")
       }
 
       const analysisResult = await response.json()
+      console.log("Analysis result received:", analysisResult)
 
       setOrderClassification(analysisResult.classification || [])
       setWordCount(analysisResult.wordCount || 0)
@@ -154,10 +192,22 @@ export default function CreateOrder() {
       setRecommendedTranslators(analysisResult.recommendedTranslators || [])
 
       // Clean up temporary file
+      console.log("Cleaning up temporary file")
       await supabase.storage.from("documents").remove([fileName])
     } catch (error) {
       console.error("Error analyzing document:", error)
-      setError("Failed to analyze document. Please try again.")
+      setError(error instanceof Error ? error.message : "Failed to analyze document. Please try again.")
+      
+      // Show more helpful error message to the user
+      if (error instanceof Error) {
+        if (error.message.includes("storage bucket")) {
+          setError("Your document couldn't be accessed. The storage bucket may not be public. Please contact support.")
+        } else if (error.message.includes("Unsupported file type")) {
+          setError("Only PDF, DOCX, and TXT files are supported for analysis.")
+        } else if (error.message.includes("Failed to download")) {
+          setError("Unable to download your file for analysis. Please check your storage settings or try a different file.")
+        }
+      }
     } finally {
       setAnalyzing(false)
     }
