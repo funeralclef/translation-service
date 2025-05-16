@@ -107,6 +107,9 @@ export async function POST(request: Request) {
       .from("translator_profiles")
       .select("*")
       .contains("languages", [sourceLanguage, targetLanguage])
+      .contains("expertise", analysis.classification)
+      .eq("availability", true)
+      .order("rating", { ascending: false })
       .limit(3)
 
     if (translatorError) {
