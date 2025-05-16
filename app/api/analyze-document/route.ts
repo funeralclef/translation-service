@@ -8,7 +8,7 @@ export async function POST(request: Request) {
 
     // In a real application, you would:
     // 1. Download the document from Supabase storage
-    // 2. Extract text from the document (using a library like pdf-parse for PDFs)
+    // 2. Extract text from the document
     // 3. Send the text to OpenAI for analysis
     // 4. Process the response and return the analysis results
 

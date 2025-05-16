@@ -32,6 +32,7 @@ const LANGUAGES = [
   "Japanese",
   "Korean",
   "Arabic",
+  "Ukrainian",
 ]
 
 const COMMON_TAGS = [
