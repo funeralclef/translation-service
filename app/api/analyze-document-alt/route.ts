@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   try {
     console.log("ALT API: Starting document analysis");
     const supabase = createServerComponentClient();
-    const { documentUrl, sourceLanguage, targetLanguage } = await request.json();
+    const { documentUrl, sourceLanguage, targetLanguage, order_id } = await request.json();
 
     console.log("ALT API: Received document URL length:", documentUrl?.length);
     
@@ -155,6 +155,22 @@ export async function POST(request: Request) {
 
       if (analysisError) {
         console.error("ALT API: Error storing analysis:", analysisError);
+      }
+      
+      // If order_id is provided, also save to order_analysis table
+      if (order_id) {
+        console.log("ALT API: Storing analysis in order_analysis table for order:", order_id);
+        const { error: orderAnalysisError } = await supabase.from("order_analysis").insert({
+          order_id,
+          classification,
+          word_count: wordCount,
+          complexity_score: complexityScore,
+          estimated_hours: estimatedHours
+        });
+        
+        if (orderAnalysisError) {
+          console.error("ALT API: Error storing order analysis:", orderAnalysisError);
+        }
       }
     } catch (storageError) {
       console.error("ALT API: Error storing analysis in database:", storageError);

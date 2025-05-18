@@ -29,6 +29,7 @@ const LANGUAGES = [
   "Japanese",
   "Korean",
   "Arabic",
+  "Ukrainian",
 ]
 
 const EXPERTISE_AREAS = [
@@ -66,7 +67,6 @@ export default function TranslatorProfile() {
   const [expertise, setExpertise] = useState<string[]>([])
   const [customTags, setCustomTags] = useState<string[]>([])
   const [customTagInput, setCustomTagInput] = useState("")
-  const [hourlyRate, setHourlyRate] = useState("")
   const [availability, setAvailability] = useState(true)
   const [rating, setRating] = useState(0)
   const [completedOrders, setCompletedOrders] = useState<CompletedOrder[]>([])
@@ -101,13 +101,12 @@ export default function TranslatorProfile() {
           }
         } else {
           // Profile exists, populate form
-          setFullName(data.full_name)
-          setLanguages(data.languages || [])
-          setExpertise(data.expertise || [])
-          setCustomTags(data.custom_tags || [])
-          setHourlyRate(data.hourly_rate?.toString() || "")
-          setAvailability(data.availability)
-          setRating(data.rating || 0)
+          setFullName(data.full_name as string || "")
+          setLanguages(data.languages as string[] || [])
+          setExpertise(data.expertise as string[] || [])
+          setCustomTags(data.custom_tags as string[] || [])
+          setAvailability(data.availability as boolean ?? true)
+          setRating(data.rating as number || 0)
           setProfileExists(true)
         }
 
@@ -130,7 +129,17 @@ export default function TranslatorProfile() {
         if (completedOrdersError) {
           console.error("Error fetching completed orders:", completedOrdersError)
         } else {
-          setCompletedOrders(completedOrdersData || [])
+          const typedOrders = (completedOrdersData || []).map(order => ({
+            id: order.id as string,
+            order_id: order.order_id as string,
+            completed_at: order.completed_at as string,
+            customer_name: order.customer_name as string,
+            source_language: order.source_language as string,
+            target_language: order.target_language as string,
+            rating: order.rating as number,
+            feedback: order.feedback as string
+          }));
+          setCompletedOrders(typedOrders);
         }
       } catch (error) {
         console.error("Error:", error)
@@ -154,13 +163,6 @@ export default function TranslatorProfile() {
         return
       }
 
-      const hourlyRateNum = Number.parseFloat(hourlyRate)
-      if (isNaN(hourlyRateNum) || hourlyRateNum <= 0) {
-        setError("Please enter a valid hourly rate")
-        setSaving(false)
-        return
-      }
-
       if (languages.length === 0) {
         setError("Please select at least one language")
         setSaving(false)
@@ -179,7 +181,6 @@ export default function TranslatorProfile() {
         languages,
         expertise,
         custom_tags: customTags,
-        hourly_rate: hourlyRateNum,
         availability,
       }
 
@@ -389,19 +390,6 @@ export default function TranslatorProfile() {
                     <p className="text-xs text-muted-foreground">
                       You can add up to 10 custom tags to highlight your specific skills
                     </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="hourlyRate">Hourly Rate (USD)</Label>
-                    <Input
-                      id="hourlyRate"
-                      type="number"
-                      min="1"
-                      step="0.01"
-                      value={hourlyRate}
-                      onChange={(e) => setHourlyRate(e.target.value)}
-                      required
-                    />
                   </div>
 
                   <div className="flex items-center space-x-2">

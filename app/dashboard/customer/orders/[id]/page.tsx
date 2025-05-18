@@ -19,6 +19,7 @@ interface Order {
   tags: string[]
   comment: string
   document_url: string
+  translated_document_url?: string
   status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
   cost: number
   created_at: string
@@ -46,6 +47,13 @@ interface Assignment {
   translator: Translator
 }
 
+interface TranslationNote {
+  order_id: string
+  translator_id: string
+  notes: string
+  created_at: string
+}
+
 export default function OrderDetail() {
   const router = useRouter()
   const params = useParams()
@@ -55,6 +63,7 @@ export default function OrderDetail() {
   const [order, setOrder] = useState<Order | null>(null)
   const [analysis, setAnalysis] = useState<OrderAnalysis | null>(null)
   const [assignment, setAssignment] = useState<Assignment | null>(null)
+  const [translationNotes, setTranslationNotes] = useState<TranslationNote | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -70,7 +79,7 @@ export default function OrderDetail() {
 
         if (orderError) throw orderError
 
-        setOrder(orderData)
+        setOrder(orderData as unknown as Order)
 
         // Fetch order analysis
         const { data: analysisData, error: analysisError } = await supabase
@@ -80,7 +89,7 @@ export default function OrderDetail() {
           .single()
 
         if (!analysisError) {
-          setAnalysis(analysisData)
+          setAnalysis(analysisData as unknown as OrderAnalysis)
         }
 
         // Fetch assignment and translator details if assigned
@@ -100,7 +109,20 @@ export default function OrderDetail() {
           .single()
 
         if (!assignmentError) {
-          setAssignment(assignmentData)
+          setAssignment(assignmentData as unknown as Assignment)
+        }
+        
+        // Fetch translator notes if available
+        if (orderData.status === "completed") {
+          const { data: notesData, error: notesError } = await supabase
+            .from("translation_notes")
+            .select("*")
+            .eq("order_id", orderId)
+            .single()
+            
+          if (!notesError && notesData) {
+            setTranslationNotes(notesData as unknown as TranslationNote)
+          }
         }
       } catch (error) {
         console.error("Error fetching order details:", error)
@@ -200,6 +222,27 @@ export default function OrderDetail() {
                   </Button>
                 </div>
               </div>
+
+              {order.status === "completed" && order.translated_document_url && (
+                <>
+                  <Separator />
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">Translated Document</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm">{order.translated_document_url.split("/").pop()?.split("?")[0] || "Translated Document"}</div>
+                      <Button variant="outline" size="sm" asChild>
+                        <a href={order.translated_document_url} target="_blank" rel="noopener noreferrer">
+                          <Download className="mr-2 h-4 w-4" />
+                          Download
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
 
               <Separator />
 
@@ -325,7 +368,7 @@ export default function OrderDetail() {
                       <div>
                         <div className="font-medium">{assignment.translator.full_name}</div>
                         <div className="text-sm text-muted-foreground">
-                          Rating: {assignment.translator.rating.toFixed(1)}/5.0
+                          Rating: {assignment.translator.rating.toFixed(1)}/100
                         </div>
                       </div>
                     </div>
@@ -355,6 +398,18 @@ export default function OrderDetail() {
                         ))}
                       </div>
                     </div>
+                    
+                    {translationNotes && translationNotes.notes && (
+                      <>
+                        <Separator />
+                        <div className="space-y-2">
+                          <div className="font-medium">Translator's Notes</div>
+                          <div className="p-3 bg-muted rounded-md text-sm">
+                            {translationNotes.notes}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-4 text-muted-foreground">

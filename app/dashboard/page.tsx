@@ -75,36 +75,18 @@ export default function Dashboard() {
             <>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Available Jobs</CardTitle>
+                  <CardTitle className="text-sm font-medium">Translation Jobs</CardTitle>
                   <FileText className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">Jobs matching your skills</p>
+                  <p className="text-xs text-muted-foreground">Available and active jobs</p>
                   <Button
                     variant="outline"
                     className="mt-4 w-full"
                     onClick={() => router.push("/dashboard/translator/jobs")}
                   >
-                    Browse Jobs
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">My Translations</CardTitle>
-                  <FileText className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">0</div>
-                  <p className="text-xs text-muted-foreground">Active translation jobs</p>
-                  <Button
-                    variant="outline"
-                    className="mt-4 w-full"
-                    onClick={() => router.push("/dashboard/translator/translations")}
-                  >
-                    View Translations
+                    Manage Jobs
                   </Button>
                 </CardContent>
               </Card>

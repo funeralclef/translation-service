@@ -32,7 +32,6 @@ interface TranslatorProfile {
   languages: string[]
   expertise: string[]
   custom_tags: string[]
-  hourly_rate: number
   availability: boolean
   rating: number
 }
@@ -416,11 +415,6 @@ export default function AdminUserDetail() {
                           </div>
                         </div>
                       )}
-
-                      <div className="space-y-2">
-                        <Label>Hourly Rate</Label>
-                        <div>${translatorProfile.hourly_rate.toFixed(2)}/hour</div>
-                      </div>
 
                       <div className="space-y-2">
                         <Label>Availability</Label>

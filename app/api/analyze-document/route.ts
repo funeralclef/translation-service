@@ -7,7 +7,7 @@ export async function POST(request: Request) {
   try {
     console.log("API: Starting document analysis")
     const supabase = createServerComponentClient()
-    const { documentUrl, sourceLanguage, targetLanguage } = await request.json()
+    const { documentUrl, sourceLanguage, targetLanguage, order_id } = await request.json()
 
     console.log("API: Received document URL length:", documentUrl?.length)
     console.log("API: First 100 chars of URL:", documentUrl?.substring(0, 100))
@@ -79,7 +79,8 @@ export async function POST(request: Request) {
     let cost = 0;
     
     try {
-      console.log("Calling OpenAI for document analysis...")
+      console.log("API: Calling OpenAI for document analysis...");
+      
       const analysisResult = await analyzeDocument(
         text,
         wordCount,
@@ -91,30 +92,29 @@ export async function POST(request: Request) {
       complexityScore = analysisResult.complexityScore;
       estimatedHours = analysisResult.estimatedHours;
       cost = analysisResult.cost;
-      console.log("OpenAI analysis completed successfully")
+      
+      console.log("API: OpenAI analysis completed successfully");
     } catch (analysisError) {
-      console.error("Error details for OpenAI analysis:", analysisError);
+      console.error("API: Error in OpenAI analysis:", analysisError);
+      
       // If AI analysis fails, use fallback values
       classification = ["General"];
-      complexityScore = 0.75; // Moderate complexity as fallback
-      estimatedHours = (wordCount / 500) * complexityScore;
-      cost = Math.max(25, wordCount * 0.05); // Basic cost calculation
-      console.log("Using fallback values due to OpenAI analysis failure")
+      complexityScore = 0.75; // Moderate complexity
+      estimatedHours = (wordCount / 500) * complexityScore; // Basic calculation
+      cost = Math.max(25, wordCount * 0.05); // Minimum $25 or 5 cents per word
+      
+      console.log("API: Using fallback values due to OpenAI analysis failure");
     }
 
-    // Get recommended translators based on language pair and classification
+    // Get recommended translators based on language pair
     const { data: translators, error: translatorError } = await supabase
       .from("translator_profiles")
       .select("*")
       .contains("languages", [sourceLanguage, targetLanguage])
-      .contains("expertise", analysis.classification)
-      .eq("availability", true)
-      .order("rating", { ascending: false })
-      .limit(3)
+      .limit(3);
 
     if (translatorError) {
-      console.error("Error fetching translators:", translatorError)
-      // Continue without translators if there's an error
+      console.error("API: Error fetching translators:", translatorError);
     }
 
     // Store the analysis results in the database
@@ -133,6 +133,22 @@ export async function POST(request: Request) {
       if (analysisError) {
         console.error("Error storing analysis:", analysisError)
         // Continue with the response even if storage fails
+      }
+      
+      // If order_id is provided, also save to order_analysis table
+      if (order_id) {
+        console.log("API: Storing analysis in order_analysis table for order:", order_id);
+        const { error: orderAnalysisError } = await supabase.from("order_analysis").insert({
+          order_id,
+          classification,
+          word_count: wordCount,
+          complexity_score: complexityScore,
+          estimated_hours: estimatedHours
+        });
+        
+        if (orderAnalysisError) {
+          console.error("API: Error storing order analysis:", orderAnalysisError);
+        }
       }
     } catch (storageError) {
       console.error("Error storing analysis in database:", storageError)

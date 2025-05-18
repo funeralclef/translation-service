@@ -5,7 +5,7 @@ import { processDocument } from "@/utils/document-processing"
 export async function POST(request: Request) {
   try {
     const supabase = createServerComponentClient()
-    const { documentUrl, sourceLanguage, targetLanguage, fixedPrice } = await request.json()
+    const { documentUrl, sourceLanguage, targetLanguage, fixedPrice, order_id } = await request.json()
 
     if (!documentUrl || !sourceLanguage || !targetLanguage || fixedPrice === undefined) {
       return NextResponse.json(
@@ -59,6 +59,23 @@ export async function POST(request: Request) {
     if (analysisError) {
       console.error("Error storing fixed-price analysis:", analysisError)
       // Continue with the response even if storage fails
+    }
+    
+    // If order_id is provided, also save to order_analysis table
+    if (order_id) {
+      console.log("Storing analysis in order_analysis table for fixed-price order:", order_id);
+      const { error: orderAnalysisError } = await supabase.from("order_analysis").insert({
+        order_id,
+        classification: ["Fixed Price"],
+        word_count: wordCount,
+        complexity_score: complexityScore,
+        estimated_hours: estimatedHours
+      });
+      
+      if (orderAnalysisError) {
+        console.error("Error storing fixed-price order analysis:", orderAnalysisError);
+        // Continue with the response even if storage fails
+      }
     }
 
     return NextResponse.json({

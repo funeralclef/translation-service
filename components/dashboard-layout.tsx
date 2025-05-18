@@ -48,7 +48,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     ...(role === "translator"
       ? [
           { name: t("navigation.availableJobs"), href: "/dashboard/translator/jobs", icon: FileText },
-          { name: t("navigation.myTranslations"), href: "/dashboard/translator/translations", icon: FileText },
           { name: t("navigation.myProfile"), href: "/dashboard/translator/profile", icon: User },
         ]
       : []),

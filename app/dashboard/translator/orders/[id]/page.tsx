@@ -28,6 +28,7 @@ interface Order {
   tags: string[]
   comment: string
   document_url: string
+  translated_document_url?: string
   status: "pending" | "assigned" | "in_progress" | "completed" | "cancelled"
   cost: number
   created_at: string
@@ -46,6 +47,11 @@ interface Customer {
   email: string
 }
 
+interface Assignment {
+  id: string
+  status: string | null
+}
+
 export default function TranslatorOrderDetail() {
   const router = useRouter()
   const params = useParams()
@@ -56,6 +62,7 @@ export default function TranslatorOrderDetail() {
   const [order, setOrder] = useState<Order | null>(null)
   const [analysis, setAnalysis] = useState<OrderAnalysis | null>(null)
   const [customer, setCustomer] = useState<Customer | null>(null)
+  const [assignment, setAssignment] = useState<Assignment | null>(null)
   const [translatedFile, setTranslatedFile] = useState<File | null>(null)
   const [notes, setNotes] = useState("")
   const [loading, setLoading] = useState(true)
@@ -78,7 +85,7 @@ export default function TranslatorOrderDetail() {
         }
 
         // Check if translator is assigned to this order
-        const { data: assignment, error: assignmentError } = await supabase
+        const { data: assignmentData, error: assignmentError } = await supabase
           .from("order_assignments")
           .select("*")
           .eq("order_id", orderId)
@@ -91,6 +98,9 @@ export default function TranslatorOrderDetail() {
           return
         }
 
+        // Save the assignment status
+        setAssignment(assignmentData as unknown as Assignment)
+
         // Fetch order details
         const { data: orderData, error: orderError } = await supabase
           .from("orders")
@@ -100,17 +110,17 @@ export default function TranslatorOrderDetail() {
 
         if (orderError) throw orderError
 
-        setOrder(orderData)
+        setOrder(orderData as unknown as Order)
 
         // Fetch customer details
         const { data: customerData, error: customerError } = await supabase
           .from("users")
           .select("id, full_name, email")
-          .eq("id", orderData.customer_id)
+          .eq("id", (orderData as any).customer_id)
           .single()
 
         if (!customerError) {
-          setCustomer(customerData)
+          setCustomer(customerData as unknown as Customer)
         }
 
         // Fetch order analysis
@@ -121,7 +131,7 @@ export default function TranslatorOrderDetail() {
           .single()
 
         if (!analysisError) {
-          setAnalysis(analysisData)
+          setAnalysis(analysisData as unknown as OrderAnalysis)
         }
       } catch (error) {
         console.error("Error fetching order details:", error)
@@ -141,6 +151,64 @@ export default function TranslatorOrderDetail() {
       setTranslatedFile(e.target.files[0])
     }
   }
+
+  const acceptRequest = async () => {
+    if (!order || !assignment) return;
+
+    try {
+      setSubmitting(true);
+      
+      // Update assignment status
+      const { error: updateAssignmentError } = await supabase
+        .from("order_assignments")
+        .update({ status: null }) // Remove the "requested" status
+        .eq("id", assignment.id);
+
+      if (updateAssignmentError) throw updateAssignmentError;
+
+      // Update order status
+      const { error: updateOrderError } = await supabase
+        .from("orders")
+        .update({ status: "assigned" })
+        .eq("id", order.id);
+
+      if (updateOrderError) throw updateOrderError;
+
+      // Update UI
+      setOrder({ ...order, status: "assigned" });
+      setAssignment({ ...assignment, status: null });
+      setSuccess("Translation request accepted");
+    } catch (error) {
+      console.error("Error accepting request:", error);
+      setError("Failed to accept request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const declineRequest = async () => {
+    if (!assignment) return;
+
+    try {
+      setSubmitting(true);
+      
+      // Delete the assignment request
+      const { error: deleteError } = await supabase
+        .from("order_assignments")
+        .delete()
+        .eq("id", assignment.id);
+
+      if (deleteError) throw deleteError;
+
+      // Redirect back to jobs page
+      router.push("/dashboard/translator/jobs?tab=requests");
+    } catch (error) {
+      console.error("Error declining request:", error);
+      setError("Failed to decline request. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const startWorking = async () => {
     if (!order) return
@@ -165,7 +233,7 @@ export default function TranslatorOrderDetail() {
   }
 
   const submitTranslation = async () => {
-    if (!order || !translatedFile) return
+    if (!order || !translatedFile || !user) return
 
     try {
       setSubmitting(true)
@@ -274,14 +342,22 @@ export default function TranslatorOrderDetail() {
                 <CardTitle>Order Information</CardTitle>
                 <Badge
                   variant={
-                    order.status === "completed" ? "success" : order.status === "in_progress" ? "default" : "secondary"
+                    assignment && assignment.status === "requested" 
+                      ? "outline"
+                      : order.status === "completed" 
+                        ? "success" 
+                        : order.status === "in_progress" 
+                          ? "default" 
+                          : "secondary"
                   }
                 >
-                  {order.status === "assigned"
-                    ? "Assigned"
-                    : order.status === "in_progress"
-                      ? "In Progress"
-                      : "Completed"}
+                  {assignment && assignment.status === "requested"
+                    ? "Request Pending"
+                    : order.status === "assigned"
+                      ? "Assigned"
+                      : order.status === "in_progress"
+                        ? "In Progress"
+                        : "Completed"}
                 </Badge>
               </div>
               <CardDescription>Details about the translation order</CardDescription>
@@ -407,7 +483,7 @@ export default function TranslatorOrderDetail() {
                       </div>
                       <div>
                         <div className="text-sm font-medium">Complexity Score</div>
-                        <div>{analysis.complexity_score.toFixed(2)}</div>
+                        <div>{analysis.complexity_score}</div>
                       </div>
                     </div>
 
@@ -445,21 +521,69 @@ export default function TranslatorOrderDetail() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Submit Translation</CardTitle>
+                <CardTitle>
+                  {assignment && assignment.status === "requested"
+                    ? "Translation Request"
+                    : order.status === "completed"
+                      ? "Translation Completed"
+                      : "Submit Translation"}
+                </CardTitle>
                 <CardDescription>
-                  {order.status === "completed"
-                    ? "This order has been completed"
-                    : "Upload your translated document and add notes"}
+                  {assignment && assignment.status === "requested"
+                    ? "Review and respond to this translation request"
+                    : order.status === "completed"
+                      ? "This order has been completed"
+                      : "Upload your translated document and add notes"}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                {order.status === "completed" ? (
+                {assignment && assignment.status === "requested" ? (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <FileText className="h-12 w-12 text-primary/70 mb-4" />
+                    <h3 className="text-lg font-semibold">Translation Request</h3>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+                      A customer has selected you for this translation job. Would you like to accept this assignment?
+                    </p>
+                    <div className="flex gap-3 mt-6">
+                      <Button 
+                        onClick={acceptRequest}
+                        disabled={submitting}
+                        className="min-w-32"
+                      >
+                        {submitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Accept Request"
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={declineRequest}
+                        disabled={submitting}
+                        className="min-w-32"
+                      >
+                        Decline
+                      </Button>
+                    </div>
+                  </div>
+                ) : order.status === "completed" ? (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
                     <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
                     <h3 className="text-lg font-semibold">Translation Completed</h3>
                     <p className="text-sm text-muted-foreground mt-2">
                       You have successfully completed this translation order.
                     </p>
+                    {order.translated_document_url && (
+                      <Button variant="outline" size="sm" className="mt-4" asChild>
+                        <a href={order.translated_document_url} target="_blank" rel="noopener noreferrer">
+                          <Download className="mr-2 h-4 w-4" />
+                          Download Translated Document
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   <>
