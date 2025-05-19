@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 import { createServerComponentClient } from "@/utils/supabase/server"
 import { processDocument } from "@/utils/document-processing"
 import { analyzeDocument } from "@/utils/openai"
+import { getHybridRecommendations } from "@/utils/recommendation-system"
 
 export async function POST(request: Request) {
   try {
     console.log("API: Starting document analysis")
     const supabase = createServerComponentClient()
-    const { documentUrl, sourceLanguage, targetLanguage, order_id } = await request.json()
+    const { documentUrl, sourceLanguage, targetLanguage, order_id, customer_id } = await request.json()
 
     console.log("API: Received document URL length:", documentUrl?.length)
     console.log("API: First 100 chars of URL:", documentUrl?.substring(0, 100))
@@ -106,15 +107,40 @@ export async function POST(request: Request) {
       console.log("API: Using fallback values due to OpenAI analysis failure");
     }
 
-    // Get recommended translators based on language pair
-    const { data: translators, error: translatorError } = await supabase
-      .from("translator_profiles")
-      .select("*")
-      .contains("languages", [sourceLanguage, targetLanguage])
-      .limit(3);
-
-    if (translatorError) {
-      console.error("API: Error fetching translators:", translatorError);
+    // Get recommended translators using the hybrid system
+    let translators = [];
+    
+    if (customer_id) {
+      console.log("API: Using hybrid recommendation system for customer:", customer_id);
+      
+      // Create a temporary order object for recommendation
+      const tempOrder = {
+        id: order_id || "temp_" + Date.now(),
+        customer_id,
+        source_language: sourceLanguage,
+        target_language: targetLanguage,
+        tags: [...classification],
+        complexity_score: complexityScore,
+        status: 'pending'
+      };
+      
+      // Get hybrid recommendations
+      translators = await getHybridRecommendations(tempOrder, customer_id);
+      console.log(`API: Found ${translators.length} recommended translators using hybrid system`);
+    } else {
+      // Fallback to basic language matching if we don't have customer info
+      console.log("API: Using basic recommendation (language matching only)");
+      const { data: fallbackTranslators, error: translatorError } = await supabase
+        .from("translator_profiles")
+        .select("*")
+        .contains("languages", [sourceLanguage, targetLanguage])
+        .limit(3);
+        
+      if (translatorError) {
+        console.error("API: Error fetching translators:", translatorError);
+      } else {
+        translators = fallbackTranslators || [];
+      }
     }
 
     // Store the analysis results in the database
