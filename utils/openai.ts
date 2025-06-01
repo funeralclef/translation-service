@@ -34,13 +34,26 @@ const COMPLEXITY_FACTORS = {
   SIMPLE: 0.5,    // General content, straightforward
   MODERATE: 0.75, // Specialized but accessible
   COMPLEX: 1.0,   // Technical jargon, specialized field
-  VERY_COMPLEX: 1.25, // Highly technical, dense content
 };
 
 /**
  * Rate per word in dollars - base rate
  */
 const BASE_RATE_PER_WORD = 0.05;
+
+/**
+ * Pricing tiers and minimums based on document size
+ */
+const PRICING_TIERS = {
+  // For very small documents (1-50 words): minimal cost
+  SMALL: { maxWords: 50, minimumCost: 1 },
+  // For medium documents (51-200 words): low minimum
+  MEDIUM: { maxWords: 200, minimumCost: 5 },
+  // For large documents (201-500 words): moderate minimum
+  LARGE: { maxWords: 500, minimumCost: 10 },
+  // For very large documents (500+ words): higher minimum but proportional
+  VERY_LARGE: { maxWords: Infinity, minimumCost: 20 }
+};
 
 /**
  * Standard processing speed in words per hour
@@ -90,11 +103,13 @@ export async function analyzeDocument(
     // Check if we have text content to analyze
     if (!text || text.length === 0) {
       console.warn("Empty text provided for analysis, using fallback values");
+      const fallbackComplexity = 0.75;
+      const fallbackCost = calculateCost(wordCount, fallbackComplexity, sourceLanguage, targetLanguage);
       return {
         classification: ['General'],
-        complexityScore: 0.75,
-        estimatedHours: wordCount > 0 ? (wordCount / 500) * 0.75 : 1,
-        cost: Math.max(25, wordCount * 0.05)
+        complexityScore: fallbackComplexity,
+        estimatedHours: wordCount > 0 ? (wordCount / 500) * fallbackComplexity : 1,
+        cost: fallbackCost
       };
     }
     
@@ -115,11 +130,10 @@ ${truncatedText}
 
 Based on the content, provide the following information in JSON format:
 1. Classification: Categorize the document into 1-3 of these categories: ${DOCUMENT_CLASSIFICATIONS.join(', ')}
-2. Complexity: Assess the document's translation complexity on a scale of 0.5 to 1.25, where:
+2. Complexity: Assess the document's translation complexity on a scale of 0.5 to 1.0, where:
    - 0.5: Simple, general content
    - 0.75: Moderate complexity, specialized but accessible
    - 1.0: Complex, technical jargon, specialized field
-   - 1.25: Very complex, highly technical, dense content
 
 Return ONLY a valid JSON object with these fields:
 {
@@ -142,7 +156,7 @@ Return ONLY a valid JSON object with these fields:
           content: prompt
         }
       ],
-      temperature: 0.3,
+      temperature: 0.4,
       response_format: { type: 'json_object' }
     });
 
@@ -221,30 +235,18 @@ function calculateEstimatedHours(wordCount: number, complexityScore: number): nu
 }
 
 /**
- * Calculates translation cost based on word count, complexity and language pair
+ * Gets the appropriate minimum cost based on word count
  */
-function calculateCost(
-  wordCount: number, 
-  complexityScore: number, 
-  sourceLanguage: string, 
-  targetLanguage: string
-): number {
-  // Base cost calculation
-  let costPerWord = BASE_RATE_PER_WORD * complexityScore;
-  
-  // Apply language pair modifier
-  // Some language pairs are more expensive due to rarity of translators
-  const languagePairModifier = getLanguagePairModifier(sourceLanguage, targetLanguage);
-  costPerWord *= languagePairModifier;
-  
-  // Calculate total cost
-  const totalCost = wordCount * costPerWord;
-  
-  // Minimum cost of $25
-  const finalCost = Math.max(25, totalCost);
-  
-  // Round to 2 decimal places
-  return Number(finalCost.toFixed(2));
+function getMinimumCostForWordCount(wordCount: number): number {
+  if (wordCount <= PRICING_TIERS.SMALL.maxWords) {
+    return PRICING_TIERS.SMALL.minimumCost;
+  } else if (wordCount <= PRICING_TIERS.MEDIUM.maxWords) {
+    return PRICING_TIERS.MEDIUM.minimumCost;
+  } else if (wordCount <= PRICING_TIERS.LARGE.maxWords) {
+    return PRICING_TIERS.LARGE.minimumCost;
+  } else {
+    return PRICING_TIERS.VERY_LARGE.minimumCost;
+  }
 }
 
 /**
@@ -264,4 +266,35 @@ function getLanguagePairModifier(sourceLanguage: string, targetLanguage: string)
   } else {
     return 1.5;  // 50% increase for rare language pairs
   }
+}
+
+/**
+ * Calculates translation cost based on word count, complexity and language pair
+ * Exported for use in other modules
+ */
+export function calculateCost(
+  wordCount: number, 
+  complexityScore: number, 
+  sourceLanguage: string, 
+  targetLanguage: string
+): number {
+  // Base cost calculation
+  let costPerWord = BASE_RATE_PER_WORD * complexityScore;
+  
+  // Apply language pair modifier
+  // Some language pairs are more expensive due to rarity of translators
+  const languagePairModifier = getLanguagePairModifier(sourceLanguage, targetLanguage);
+  costPerWord *= languagePairModifier;
+  
+  // Calculate total cost
+  const totalCost = wordCount * costPerWord;
+  
+  // Determine appropriate minimum cost based on word count
+  const minimumCost = getMinimumCostForWordCount(wordCount);
+  
+  // Apply minimum cost
+  const finalCost = Math.max(minimumCost, totalCost);
+  
+  // Round to 2 decimal places
+  return Number(finalCost.toFixed(2));
 } 

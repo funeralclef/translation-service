@@ -6,6 +6,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,6 +61,7 @@ interface CompletedOrder {
 export default function TranslatorProfile() {
   const router = useRouter()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const supabase = createClientComponentClient()
 
   const [fullName, setFullName] = useState("")
@@ -164,13 +166,13 @@ export default function TranslatorProfile() {
       }
 
       if (languages.length === 0) {
-        setError("Please select at least one language")
+        setError(t("translatorJobs.profile.errorSelectLanguage"))
         setSaving(false)
         return
       }
 
       if (expertise.length === 0) {
-        setError("Please select at least one area of expertise")
+        setError(t("translatorJobs.profile.errorSelectExpertise"))
         setSaving(false)
         return
       }
@@ -206,7 +208,7 @@ export default function TranslatorProfile() {
       setProfileExists(true)
     } catch (error) {
       console.error("Error saving profile:", error)
-      setError("Failed to save profile. Please try again.")
+      setError(t("translatorJobs.profile.errorSaveProfile"))
     } finally {
       setSaving(false)
     }
@@ -270,20 +272,20 @@ export default function TranslatorProfile() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Translator Profile</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("translatorJobs.profile.title")}</h1>
         </div>
 
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="profile">Profile Information</TabsTrigger>
-            <TabsTrigger value="completed">Completed Orders</TabsTrigger>
+            <TabsTrigger value="profile">{t("translatorJobs.profile.profileTab")}</TabsTrigger>
+            <TabsTrigger value="completed">{t("translatorJobs.profile.completedTab")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="profile" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
-                <CardDescription>Set up your translator profile to start receiving translation jobs</CardDescription>
+                <CardTitle>{t("translatorJobs.profile.profileTitle")}</CardTitle>
+                <CardDescription>{t("translatorJobs.profile.profileDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {error && (
@@ -294,19 +296,19 @@ export default function TranslatorProfile() {
 
                 {success && (
                   <Alert>
-                    <AlertDescription>Profile saved successfully!</AlertDescription>
+                    <AlertDescription>{t("translatorJobs.profile.profileSaved")}</AlertDescription>
                   </Alert>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
+                    <Label htmlFor="fullName">{t("translatorJobs.profile.fullName")}</Label>
                     <Input id="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
                   </div>
 
                   {profileExists && (
                     <div className="space-y-2">
-                      <Label>Current Rating</Label>
+                      <Label>{t("translatorJobs.profile.currentRating")}</Label>
                       <div className="flex items-center gap-2">
                         <div className="text-2xl font-bold">{rating}/100</div>
                         <div className="ml-2">{renderStarRating(rating)}</div>
@@ -315,7 +317,7 @@ export default function TranslatorProfile() {
                   )}
 
                   <div className="space-y-2">
-                    <Label>Languages</Label>
+                    <Label>{t("translatorJobs.profile.languages")}</Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {LANGUAGES.map((language) => (
                         <div key={language} className="flex items-center space-x-2">
@@ -336,7 +338,7 @@ export default function TranslatorProfile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Areas of Expertise</Label>
+                    <Label>{t("translatorJobs.profile.areasOfExpertise")}</Label>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {EXPERTISE_AREAS.map((area) => (
                         <div key={area} className="flex items-center space-x-2">
@@ -357,14 +359,14 @@ export default function TranslatorProfile() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="customTags">Custom Tags</Label>
+                    <Label htmlFor="customTags">{t("translatorJobs.profile.customTags")}</Label>
                     <div className="flex items-center gap-2">
                       <Input
                         id="customTags"
                         value={customTagInput}
                         onChange={(e) => setCustomTagInput(e.target.value)}
                         onKeyDown={handleCustomTagKeyDown}
-                        placeholder="Add a custom tag and press Enter"
+                        placeholder={t("translatorJobs.profile.customTagPlaceholder")}
                         maxLength={20}
                       />
                       <Button type="button" onClick={addCustomTag} variant="outline" size="sm">
@@ -388,7 +390,7 @@ export default function TranslatorProfile() {
                       </div>
                     )}
                     <p className="text-xs text-muted-foreground">
-                      You can add up to 10 custom tags to highlight your specific skills
+                      {t("translatorJobs.profile.customTagsLimit")}
                     </p>
                   </div>
 
@@ -402,7 +404,7 @@ export default function TranslatorProfile() {
                       htmlFor="availability"
                       className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                     >
-                      Available for new translation jobs
+                      {t("translatorJobs.profile.availability")}
                     </label>
                   </div>
 
@@ -410,10 +412,10 @@ export default function TranslatorProfile() {
                     {saving ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
+                        {t("translatorJobs.profile.saving")}
                       </>
                     ) : (
-                      "Save Profile"
+                      t("translatorJobs.profile.saveProfile")
                     )}
                   </Button>
                 </form>
@@ -424,14 +426,14 @@ export default function TranslatorProfile() {
           <TabsContent value="completed" className="space-y-6 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle>Completed Orders</CardTitle>
-                <CardDescription>View your completed translation orders and customer feedback</CardDescription>
+                <CardTitle>{t("translatorJobs.profile.completedOrdersTitle")}</CardTitle>
+                <CardDescription>{t("translatorJobs.profile.completedOrdersDescription")}</CardDescription>
               </CardHeader>
               <CardContent>
                 {completedOrders.length === 0 ? (
                   <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                    <h3 className="mb-2 text-lg font-semibold">No completed orders yet</h3>
-                    <p className="text-sm text-muted-foreground">Your completed translation orders will appear here.</p>
+                    <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.profile.noCompletedOrders")}</h3>
+                    <p className="text-sm text-muted-foreground">{t("translatorJobs.profile.noCompletedOrdersDescription")}</p>
                   </div>
                 ) : (
                   <div className="space-y-6">
@@ -439,9 +441,9 @@ export default function TranslatorProfile() {
                       <div key={order.id} className="rounded-lg border p-4">
                         <div className="flex justify-between items-start mb-2">
                           <div>
-                            <h3 className="font-medium">Order #{order.order_id.slice(0, 8)}</h3>
+                            <h3 className="font-medium">{t("translatorJobs.profile.orderNumber")}{order.order_id.slice(0, 8)}</h3>
                             <p className="text-sm text-muted-foreground">
-                              Completed on {new Date(order.completed_at).toLocaleDateString()}
+                              {t("translatorJobs.profile.completedOn")} {new Date(order.completed_at).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex items-center">
@@ -450,16 +452,16 @@ export default function TranslatorProfile() {
                           </div>
                         </div>
                         <div className="grid grid-cols-2 gap-2 text-sm mb-2">
-                          <div className="font-medium">Customer:</div>
+                          <div className="font-medium">{t("translatorJobs.profile.customer")}</div>
                           <div>{order.customer_name}</div>
-                          <div className="font-medium">Languages:</div>
+                          <div className="font-medium">{t("translatorJobs.profile.languagesPair")}</div>
                           <div>{`${order.source_language} → ${order.target_language}`}</div>
                         </div>
                         {order.feedback && (
                           <>
                             <Separator className="my-2" />
                             <div className="mt-2">
-                              <h4 className="text-sm font-medium mb-1">Customer Feedback:</h4>
+                              <h4 className="text-sm font-medium mb-1">{t("translatorJobs.profile.customerFeedback")}</h4>
                               <p className="text-sm italic">"{order.feedback}"</p>
                             </div>
                           </>

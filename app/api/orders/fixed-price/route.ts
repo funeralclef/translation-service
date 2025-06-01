@@ -14,17 +14,26 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate fixed price is a number and at least $25
+    // Validate fixed price is a number and meets minimum requirements
     const price = Number(fixedPrice)
-    if (isNaN(price) || price < 25) {
+    if (isNaN(price) || price < 1) {
       return NextResponse.json(
-        { error: "Fixed price must be a number and at least $25" },
+        { error: "Fixed price must be a number and at least $1" },
         { status: 400 }
       )
     }
 
     // Process the document to extract text and count words
     const { text, wordCount } = await processDocument(documentUrl)
+    
+    // Get suggested minimum for this word count
+    const { calculateCost } = await import("@/utils/openai");
+    const suggestedMinimum = calculateCost(wordCount, 0.5, sourceLanguage, targetLanguage); // Use lowest complexity for minimum
+    
+    // Warn if price is below suggested minimum but allow it
+    if (price < suggestedMinimum) {
+      console.warn(`Fixed price $${price} is below suggested minimum $${suggestedMinimum} for ${wordCount} words`);
+    }
 
     // For fixed price orders, we still calculate complexity but don't use it for pricing
     // We set a moderate complexity as default

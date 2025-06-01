@@ -1,9 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Fragment } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
+import { formatEstimatedTime, formatEstimatedTimeCompact } from "@/utils/time-formatting"
+import { formatComplexity } from "@/utils/complexity-formatting"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -153,6 +156,7 @@ export default function TranslatorJobs() {
   const router = useRouter()
   const { user } = useAuth()
   const supabase = createClientComponentClient()
+  const { t } = useLanguage()
 
   const [availableJobs, setAvailableJobs] = useState<OrderWithAnalysis[]>([])
   const [activeOrders, setActiveOrders] = useState<ActiveOrder[]>([])
@@ -595,7 +599,7 @@ export default function TranslatorJobs() {
 
   const acceptRequest = async (requestId: string, orderId: string) => {
     if (activeOrders.length >= 3) {
-      setError("You cannot accept more than 3 active orders at a time")
+      setError(t("translatorJobs.requests.errorMaxActiveOrders"))
       return
     }
 
@@ -636,7 +640,7 @@ export default function TranslatorJobs() {
       }
     } catch (error) {
       console.error("Error accepting request:", error)
-      setError("Failed to accept request. Please try again.")
+      setError(t("translatorJobs.requests.errorAcceptRequest"))
     } finally {
       setProcessingRequest(null)
     }
@@ -657,7 +661,7 @@ export default function TranslatorJobs() {
       setAssignmentRequests(prev => prev.filter(req => req.id !== requestId))
     } catch (error) {
       console.error("Error declining request:", error)
-      setError("Failed to decline request. Please try again.")
+      setError(t("translatorJobs.requests.errorDeclineRequest"))
     } finally {
       setProcessingRequest(null)
     }
@@ -722,9 +726,9 @@ export default function TranslatorJobs() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <h1 className="text-3xl font-bold tracking-tight">Translation Jobs</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("translatorJobs.title")}</h1>
           <div className="flex items-center gap-2">
-            <div className="text-sm text-muted-foreground">Your Rating:</div>
+            <div className="text-sm text-muted-foreground">{t("translatorJobs.yourRating")}</div>
             <div className="flex items-center gap-1">
               <span className="font-bold">{rating}/100</span>
               {renderStarRating(rating)}
@@ -740,34 +744,34 @@ export default function TranslatorJobs() {
 
         <Tabs defaultValue="available" className="w-full" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="available">Available Jobs</TabsTrigger>
+            <TabsTrigger value="available">{t("translatorJobs.tabs.available")}</TabsTrigger>
             <TabsTrigger value="requests" className="relative">
-              Requests
+              {t("translatorJobs.tabs.requests")}
               {assignmentRequests.length > 0 && (
                 <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground">
                   {assignmentRequests.length}
                 </span>
               )}
             </TabsTrigger>
-            <TabsTrigger value="active">Active Orders</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
+            <TabsTrigger value="active">{t("translatorJobs.tabs.active")}</TabsTrigger>
+            <TabsTrigger value="completed">{t("translatorJobs.tabs.completed")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="available" className="mt-6">
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold">Available Jobs</h2>
-                  <p className="text-sm text-muted-foreground">Browse new translation opportunities</p>
+                  <h2 className="text-xl font-semibold">{t("translatorJobs.available.title")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("translatorJobs.available.description")}</p>
                 </div>
-                <Badge variant="outline">{availableJobs.length} jobs</Badge>
+                <Badge variant="outline">{availableJobs.length} {t("translatorJobs.available.jobsCount")}</Badge>
               </div>
 
               {loading ? (
                 <div className="flex justify-center items-center h-64">
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <p className="text-sm text-muted-foreground">Loading jobs...</p>
+                    <p className="text-sm text-muted-foreground">{t("translatorJobs.available.loadingJobs")}</p>
                   </div>
                 </div>
               ) : availableJobs.length === 0 ? (
@@ -775,17 +779,17 @@ export default function TranslatorJobs() {
                   <div className="rounded-full bg-muted p-3 mb-2">
                     <FileText className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">No Available Jobs</h3>
+                  <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.available.noJobs")}</h3>
                   <p className="text-sm text-muted-foreground max-w-md mb-4">
                     {activeOrders.length >= 3
-                      ? "You have reached the maximum number of active orders. Complete some of your current orders to take on new ones."
-                      : "There are no available jobs matching your skills at the moment. Check back later for new opportunities."}
+                      ? t("translatorJobs.available.maxOrdersReached")
+                      : t("translatorJobs.available.noJobsDescription")}
                   </p>
                   <Button onClick={() => router.refresh()} variant="outline" size="sm" className="flex items-center gap-1">
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
                       <path d="M1.90321 7.29033C1.90321 10.2387 4.29483 12.6303 7.24321 12.6303C10.1916 12.6303 12.5832 10.2387 12.5832 7.29033C12.5832 4.34194 10.1916 1.95033 7.24321 1.95033C6.01393 1.95033 4.87866 2.37077 3.97909 3.06248L4.71453 3.79792C5.45211 3.27853 6.31883 2.95033 7.24321 2.95033C9.64049 2.95033 11.5832 4.89304 11.5832 7.29033C11.5832 9.68761 9.64049 11.6303 7.24321 11.6303C4.84593 11.6303 2.90321 9.68761 2.90321 7.29033C2.90321 6.36595 3.23142 5.49923 3.7508 4.76165L3.01536 4.02621C2.32366 4.92578 1.90321 6.06105 1.90321 7.29033ZM5.58593 4.79031L3.15469 4.21228L2.57666 6.64352L5.58593 4.79031Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
                     </svg>
-                    Refresh Jobs
+                    {t("translatorJobs.available.refreshJobs")}
                   </Button>
                 </div>
               ) : (
@@ -814,7 +818,7 @@ export default function TranslatorJobs() {
                                 <div className="flex justify-between items-start">
                                   <div>
                                     <CardTitle className="text-md break-words">{job.tags.slice(0, 3).join(", ")}</CardTitle>
-                                    <CardDescription>Created on {formatDate(job.created_at)}</CardDescription>
+                                    <CardDescription>{t("translatorJobs.available.createdOn")} {formatDate(job.created_at)}</CardDescription>
                                   </div>
                                   <Badge variant="secondary" className="ml-2 shrink-0">
                                     {job.source_language} → {job.target_language}
@@ -825,7 +829,7 @@ export default function TranslatorJobs() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium">Deadline</span>
+                                    <span className="font-medium">{t("translatorJobs.available.deadline")}</span>
                                   </div>
                                   <div className="text-sm">{formatDeadline(job.deadline)}</div>
                                 </div>
@@ -836,15 +840,15 @@ export default function TranslatorJobs() {
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                       <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="font-medium">Job Details</span>
+                                      <span className="font-medium">{t("translatorJobs.available.jobDetails")}</span>
                                     </div>
                                     <div className="grid grid-cols-2 gap-2 text-sm">
-                                      <div>Word Count:</div>
+                                      <div>{t("translatorJobs.available.wordCount")}</div>
                                       <div>{job.analysis.word_count}</div>
-                                      <div>Complexity:</div>
-                                      <div>{job.analysis.complexity_score}</div>
-                                      <div>Est. Hours:</div>
-                                      <div>{job.analysis.estimated_hours.toFixed(1)} hrs</div>
+                                      <div>{t("translatorJobs.available.complexity")}</div>
+                                      <div>{formatComplexity(job.analysis.complexity_score)}</div>
+                                      <div>{t("translatorJobs.available.estimatedHours")}</div>
+                                      <div>{job.analysis.estimated_hours ? formatEstimatedTimeCompact(job.analysis.estimated_hours) : "N/A"}</div>
                                     </div>
                                   </div>
                                 )}
@@ -853,7 +857,7 @@ export default function TranslatorJobs() {
                                   <>
                                     <Separator />
                                     <div className="space-y-2">
-                                      <div className="font-medium">Comment</div>
+                                      <div className="font-medium">{t("translatorJobs.available.comment")}</div>
                                       <div className="text-sm rounded bg-muted px-3 py-2 break-words">
                                         <p className="line-clamp-2">{job.comment}</p>
                                       </div>
@@ -866,7 +870,7 @@ export default function TranslatorJobs() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium">Payment</span>
+                                    <span className="font-medium">{t("translatorJobs.available.payment")}</span>
                                   </div>
                                   <div className="text-xl font-bold">${job.cost.toFixed(2)}</div>
                                 </div>
@@ -880,10 +884,10 @@ export default function TranslatorJobs() {
                                   {acceptingJob === job.id ? (
                                     <>
                                       <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-1"></div>
-                                      Processing...
+                                      {t("translatorJobs.available.processing")}
                                     </>
                                   ) : (
-                                    "Accept Job"
+                                    t("translatorJobs.available.acceptJob")
                                   )}
                                 </Button>
                               </CardFooter>
@@ -906,17 +910,17 @@ export default function TranslatorJobs() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold">Translation Requests</h2>
-                  <p className="text-sm text-muted-foreground">Review requests from customers</p>
+                  <h2 className="text-xl font-semibold">{t("translatorJobs.requests.title")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("translatorJobs.requests.description")}</p>
                 </div>
-                <Badge variant="outline">{assignmentRequests.length} requests</Badge>
+                <Badge variant="outline">{assignmentRequests.length} {t("translatorJobs.requests.requestsCount")}</Badge>
               </div>
 
               {loading ? (
                 <div className="flex justify-center items-center h-64">
                   <div className="flex flex-col items-center gap-2">
                     <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                    <p className="text-sm text-muted-foreground">Loading requests...</p>
+                    <p className="text-sm text-muted-foreground">{t("translatorJobs.requests.loadingRequests")}</p>
                   </div>
                 </div>
               ) : assignmentRequests.length === 0 ? (
@@ -924,15 +928,15 @@ export default function TranslatorJobs() {
                   <div className="rounded-full bg-muted p-3 mb-2">
                     <User className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">No Translation Requests</h3>
+                  <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.requests.noRequests")}</h3>
                   <p className="text-sm text-muted-foreground max-w-md mb-4">
-                    You don't have any pending translation requests from customers. When a customer selects you for a translation job, it will appear here.
+                    {t("translatorJobs.requests.noRequestsDescription")}
                   </p>
                   <Button onClick={() => router.refresh()} variant="outline" size="sm" className="flex items-center gap-1">
                     <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-4 w-4">
                       <path d="M1.90321 7.29033C1.90321 10.2387 4.29483 12.6303 7.24321 12.6303C10.1916 12.6303 12.5832 10.2387 12.5832 7.29033C12.5832 4.34194 10.1916 1.95033 7.24321 1.95033C6.01393 1.95033 4.87866 2.37077 3.97909 3.06248L4.71453 3.79792C5.45211 3.27853 6.31883 2.95033 7.24321 2.95033C9.64049 2.95033 11.5832 4.89304 11.5832 7.29033C11.5832 9.68761 9.64049 11.6303 7.24321 11.6303C4.84593 11.6303 2.90321 9.68761 2.90321 7.29033C2.90321 6.36595 3.23142 5.49923 3.7508 4.76165L3.01536 4.02621C2.32366 4.92578 1.90321 6.06105 1.90321 7.29033ZM5.58593 4.79031L3.15469 4.21228L2.57666 6.64352L5.58593 4.79031Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path>
                     </svg>
-                    Refresh Requests
+                    {t("translatorJobs.requests.refreshRequests")}
                   </Button>
                 </div>
               ) : (
@@ -960,8 +964,8 @@ export default function TranslatorJobs() {
                               <CardHeader>
                                 <div className="flex justify-between items-start">
                                   <div>
-                                    <CardTitle className="text-md break-words">Request from {request.customer.full_name}</CardTitle>
-                                    <CardDescription>Requested on {formatDate(request.assigned_at)}</CardDescription>
+                                    <CardTitle className="text-md break-words">{t("translatorJobs.requests.requestFrom").replace("{name}", request.customer.full_name)}</CardTitle>
+                                    <CardDescription>{t("translatorJobs.requests.requestedOn")} {formatDate(request.assigned_at)}</CardDescription>
                                   </div>
                                   <Badge variant="secondary" className="ml-2 shrink-0">
                                     {request.order.source_language} → {request.order.target_language}
@@ -972,7 +976,7 @@ export default function TranslatorJobs() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium">Deadline</span>
+                                    <span className="font-medium">{t("translatorJobs.available.deadline")}</span>
                                   </div>
                                   <div className="text-sm">{formatDeadline(request.order.deadline)}</div>
                                 </div>
@@ -982,7 +986,7 @@ export default function TranslatorJobs() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium">Job Details</span>
+                                    <span className="font-medium">{t("translatorJobs.available.jobDetails")}</span>
                                   </div>
                                   
                                   <div className="flex flex-wrap gap-1 my-2">
@@ -990,18 +994,18 @@ export default function TranslatorJobs() {
                                       <Badge key={i} variant="outline">{tag}</Badge>
                                     ))}
                                     {request.order.tags.length > 3 && (
-                                      <span className="text-xs text-muted-foreground">+{request.order.tags.length - 3} more</span>
+                                      <span className="text-xs text-muted-foreground">{t("translatorJobs.requests.moreItems").replace("{count}", (request.order.tags.length - 3).toString())}</span>
                                     )}
                                   </div>
 
                                   {request.analysis && (
                                     <div className="grid grid-cols-2 gap-2 text-sm">
-                                      <div>Word Count:</div>
+                                      <div>{t("translatorJobs.available.wordCount")}</div>
                                       <div>{request.analysis.word_count}</div>
-                                      <div>Complexity:</div>
-                                      <div>{request.analysis.complexity_score}</div>
-                                      <div>Est. Hours:</div>
-                                      <div>{request.analysis.estimated_hours.toFixed(1)} hrs</div>
+                                      <div>{t("translatorJobs.available.complexity")}</div>
+                                      <div>{formatComplexity(request.analysis.complexity_score)}</div>
+                                      <div>{t("translatorJobs.available.estimatedHours")}</div>
+                                      <div>{request.analysis.estimated_hours ? formatEstimatedTimeCompact(request.analysis.estimated_hours) : "N/A"}</div>
                                     </div>
                                   )}
                                 </div>
@@ -1010,7 +1014,7 @@ export default function TranslatorJobs() {
                                   <>
                                     <Separator />
                                     <div className="space-y-2">
-                                      <div className="font-medium">Comment</div>
+                                      <div className="font-medium">{t("translatorJobs.available.comment")}</div>
                                       <div className="text-sm rounded bg-muted px-3 py-2 break-words">
                                         <p className="line-clamp-2">{request.order.comment}</p>
                                       </div>
@@ -1023,7 +1027,7 @@ export default function TranslatorJobs() {
                                 <div className="space-y-2">
                                   <div className="flex items-center gap-2">
                                     <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                                    <span className="font-medium">Payment</span>
+                                    <span className="font-medium">{t("translatorJobs.available.payment")}</span>
                                   </div>
                                   <div className="text-xl font-bold">${request.order.cost.toFixed(2)}</div>
                                 </div>
@@ -1034,7 +1038,7 @@ export default function TranslatorJobs() {
                                     variant="secondary"
                                     className="w-full"
                                 >
-                                  View Details
+                                  {t("translatorJobs.requests.viewDetails")}
                                 </Button>
                                 <div className="flex w-full gap-3">
                                   <Button
@@ -1045,10 +1049,10 @@ export default function TranslatorJobs() {
                                     {processingRequest === request.id ? (
                                       <>
                                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                        Processing...
+                                        {t("translatorJobs.available.processing")}
                                       </>
                                     ) : (
-                                      "Accept"
+                                      t("translatorJobs.requests.accept")
                                     )}
                                   </Button>
                                   <Button
@@ -1057,7 +1061,7 @@ export default function TranslatorJobs() {
                                     className="flex-1"
                                     disabled={processingRequest === request.id}
                                   >
-                                    Decline
+                                    {t("translatorJobs.requests.decline")}
                                   </Button>
                                 </div>
                               </CardFooter>
@@ -1080,22 +1084,22 @@ export default function TranslatorJobs() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold">Active Orders</h2>
-                  <p className="text-sm text-muted-foreground">Manage your active translation projects</p>
+                  <h2 className="text-xl font-semibold">{t("translatorJobs.active.title")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("translatorJobs.active.description")}</p>
                 </div>
-                <Badge variant="outline">{activeTranslations.length} orders</Badge>
+                <Badge variant="outline">{activeOrders.length} {t("translatorJobs.active.ordersCount")}</Badge>
               </div>
               
-              {activeTranslations.length === 0 ? (
+              {activeOrders.length === 0 ? (
                 <div className="flex h-auto flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
                   <div className="rounded-full bg-muted p-3 mb-2">
                     <Clock className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">No active orders</h3>
+                  <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.active.noActiveOrders")}</h3>
                   <p className="text-sm text-muted-foreground mb-4">
-                    You don't have any active translation orders at the moment.
+                    {t("translatorJobs.active.noActiveOrdersDescription")}
                   </p>
-                  <Button onClick={() => setActiveTab("available")}>Browse Available Jobs</Button>
+                  <Button onClick={() => setActiveTab("available")}>{t("translatorJobs.active.browseAvailableJobs")}</Button>
                 </div>
               ) : (
                 <div className="relative mb-6">
@@ -1115,85 +1119,74 @@ export default function TranslatorJobs() {
                     className="mx-auto max-w-[95%] px-4"
                   >
                     <CarouselContent>
-                      {activeTranslations.map((translation) => (
-                        <CarouselItem key={translation.id} className="sm:basis-full md:basis-1/2 lg:basis-1/3">
+                      {activeOrders.map((order) => (
+                        <CarouselItem key={order.id} className="sm:basis-full md:basis-1/2 lg:basis-1/3">
                           <Card className="overflow-hidden transition-all hover:shadow-md h-full">
                             <CardHeader>
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <CardTitle className="text-md break-words">Order #{translation.order_id.slice(0, 8)}</CardTitle>
-                                  <CardDescription>Assigned on {formatDate(translation.assigned_at)}</CardDescription>
+                                  <CardTitle className="text-md break-words">{t("translatorJobs.active.orderNumber").replace("{id}", order.id.slice(0, 8))}</CardTitle>
+                                  <CardDescription>{t("translatorJobs.active.assignedOn")} {formatDate(order.assigned_at)}</CardDescription>
                                 </div>
-                                {translation.order && (
-                                  <Badge
-                                    variant="secondary"
-                                    className="ml-2 shrink-0"
-                                  >
-                                    {translation.order.source_language} → {translation.order.target_language}
-                                  </Badge>
-                                )}
+                                <Badge variant="secondary" className="ml-2 shrink-0">
+                                  {order.source_language} → {order.target_language}
+                                </Badge>
                               </div>
                             </CardHeader>
                             <CardContent className="space-y-4">
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  <span className="font-medium">Customer</span>
+                                  <span className="font-medium">{t("translatorJobs.active.customer")}</span>
                                 </div>
-                                <div className="text-sm">{translation.customer?.full_name || "Unknown"}</div>
+                                <div className="text-sm">{order.customer_name}</div>
                               </div>
-  
-                              {translation.order && (
-                                <>
-                                  <Separator />
-  
-                                  <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="font-medium">Deadline</span>
-                                    </div>
-                                    <div className="text-sm">{formatDeadline(translation.order.deadline)}</div>
+
+                              <Separator />
+
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <span className="font-medium">{t("translatorJobs.available.deadline")}</span>
+                                </div>
+                                <div className="text-sm">{formatDeadline(order.deadline)}</div>
+                              </div>
+
+                              <Separator />
+
+                              {order.analysis && (
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                                    <span className="font-medium">{t("translatorJobs.available.jobDetails")}</span>
                                   </div>
-  
-                                  {translation.analysis && (
-                                    <>
-                                      <Separator />
-  
-                                      <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                          <span className="font-medium">Job Details</span>
-                                        </div>
-                                        <div className="grid grid-cols-2 gap-2 text-sm">
-                                          <div>Word Count:</div>
-                                          <div>{translation.analysis.word_count}</div>
-                                          <div>Complexity:</div>
-                                          <div>{translation.analysis.complexity_score}</div>
-                                          <div>Est. Hours:</div>
-                                          <div>{translation.analysis.estimated_hours.toFixed(1)} hrs</div>
-                                        </div>
-                                      </div>
-                                    </>
-                                  )}
-  
-                                  <Separator />
-  
-                                  <div className="space-y-2">
-                                    <div className="flex items-center gap-2">
-                                      <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="font-medium">Payment</span>
-                                    </div>
-                                    <div className="text-xl font-bold">${translation.order.cost.toFixed(2)}</div>
+                                  <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>{t("translatorJobs.available.wordCount")}</div>
+                                    <div>{order.analysis.word_count}</div>
+                                    <div>{t("translatorJobs.available.complexity")}</div>
+                                    <div>{formatComplexity(order.analysis.complexity_score)}</div>
+                                    <div>{t("translatorJobs.available.estimatedHours")}</div>
+                                    <div>{order.analysis.estimated_hours ? formatEstimatedTimeCompact(order.analysis.estimated_hours) : "N/A"}</div>
                                   </div>
-                                </>
+                                </div>
                               )}
+
+                              <Separator />
+
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2">
+                                  <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <span className="font-medium">{t("translatorJobs.available.payment")}</span>
+                                </div>
+                                <div className="text-xl font-bold">${order.cost.toFixed(2)}</div>
+                              </div>
                             </CardContent>
                             <CardFooter>
                               <Button
-                                onClick={() => router.push(`/dashboard/translator/orders/${translation.order_id}`)}
                                 className="w-full"
+                                onClick={() => router.push(`/dashboard/translator/orders/${order.id}`)}
                               >
-                                View Order
+                                {t("translatorJobs.active.viewOrder")}
                               </Button>
                             </CardFooter>
                           </Card>
@@ -1214,10 +1207,10 @@ export default function TranslatorJobs() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
-                  <h2 className="text-xl font-semibold">Completed Translations</h2>
-                  <p className="text-sm text-muted-foreground">View your completed translation projects</p>
+                  <h2 className="text-xl font-semibold">{t("translatorJobs.completed.title")}</h2>
+                  <p className="text-sm text-muted-foreground">{t("translatorJobs.completed.description")}</p>
                 </div>
-                <Badge variant="outline">{completedTranslations.length} translations</Badge>
+                <Badge variant="outline">{completedTranslations.length} {t("translatorJobs.completed.translationsCount")}</Badge>
               </div>
               
               {completedTranslations.length === 0 ? (
@@ -1225,8 +1218,8 @@ export default function TranslatorJobs() {
                   <div className="rounded-full bg-muted p-3 mb-2">
                     <Star className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mb-2 text-lg font-semibold">No completed translations</h3>
-                  <p className="text-sm text-muted-foreground mb-4">You haven't completed any translation orders yet.</p>
+                  <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.completed.noCompletedTranslations")}</h3>
+                  <p className="text-sm text-muted-foreground mb-4">{t("translatorJobs.completed.noCompletedTranslationsDescription")}</p>
                 </div>
               ) : (
                 <div className="relative mb-6">
@@ -1252,8 +1245,8 @@ export default function TranslatorJobs() {
                             <CardHeader>
                               <div className="flex justify-between items-start">
                                 <div>
-                                  <CardTitle className="text-md break-words">Order #{translation.order_id.slice(0, 8)}</CardTitle>
-                                  <CardDescription>Completed on {formatDate(translation.completed_at)}</CardDescription>
+                                  <CardTitle className="text-md break-words">{t("translatorJobs.active.orderNumber").replace("{id}", translation.order_id.slice(0, 8))}</CardTitle>
+                                  <CardDescription>{t("translatorJobs.completed.completedOn")} {formatDate(translation.completed_at)}</CardDescription>
                                 </div>
                                 <Badge variant="secondary" className="ml-2 shrink-0">
                                   {translation.source_language} → {translation.target_language}
@@ -1264,7 +1257,7 @@ export default function TranslatorJobs() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <User className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  <span className="font-medium">Customer</span>
+                                  <span className="font-medium">{t("translatorJobs.active.customer")}</span>
                                 </div>
                                 <div className="text-sm">{translation.customer_name || "Unknown Customer"}</div>
                               </div>
@@ -1274,27 +1267,27 @@ export default function TranslatorJobs() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  <span className="font-medium">Job Details</span>
+                                  <span className="font-medium">{t("translatorJobs.available.jobDetails")}</span>
                                 </div>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>Status:</div>
+                                  <div>{t("translatorJobs.completed.status")}</div>
                                   <div>
                                     <Badge variant="success" className="capitalize">
-                                      Completed
+                                      {t("translatorJobs.completed.completed")}
                                     </Badge>
                                   </div>
                                   
                                   {translation.word_count && (
                                     <>
-                                      <div>Word Count:</div>
+                                      <div>{t("translatorJobs.available.wordCount")}</div>
                                       <div>{translation.word_count}</div>
                                     </>
                                   )}
                                   
                                   {translation.estimated_hours && (
                                     <>
-                                      <div>Est. Hours:</div>
-                                      <div>{translation.estimated_hours.toFixed(1)} hrs</div>
+                                      <div>{t("translatorJobs.available.estimatedHours")}</div>
+                                      <div>{translation.estimated_hours ? formatEstimatedTimeCompact(translation.estimated_hours) : "N/A"}</div>
                                     </>
                                   )}
                                 </div>
@@ -1305,7 +1298,7 @@ export default function TranslatorJobs() {
                               <div className="space-y-2">
                                 <div className="flex items-center gap-2">
                                   <Star className="h-4 w-4 text-muted-foreground shrink-0" />
-                                  <span className="font-medium">Rating</span>
+                                  <span className="font-medium">{t("translatorJobs.completed.rating")}</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <span className="font-bold">{translation.rating}/100</span>
@@ -1319,7 +1312,7 @@ export default function TranslatorJobs() {
                                   <div className="space-y-2">
                                     <div className="flex items-center gap-2">
                                       <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
-                                      <span className="font-medium">Payment</span>
+                                      <span className="font-medium">{t("translatorJobs.available.payment")}</span>
                                     </div>
                                     <div className="text-xl font-bold">${translation.cost.toFixed(2)}</div>
                                   </div>
@@ -1331,7 +1324,7 @@ export default function TranslatorJobs() {
                                 className="w-full"
                                 onClick={() => router.push(`/dashboard/translator/orders/${translation.order_id}`)}
                               >
-                                View Complete Details
+                                {t("translatorJobs.completed.viewCompleteDetails")}
                               </Button>
                             </CardFooter>
                           </Card>

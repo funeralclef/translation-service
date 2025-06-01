@@ -126,7 +126,11 @@ export async function POST(request: Request) {
       classification = ["General"];
       complexityScore = 0.75; // Moderate complexity as fallback
       estimatedHours = (wordCount / 500) * complexityScore;
-      cost = Math.max(25, wordCount * 0.05); // Basic cost calculation
+      
+      // Use proper cost calculation instead of hardcoded minimum
+      const { calculateCost } = await import("@/utils/openai");
+      cost = calculateCost(wordCount, complexityScore, sourceLanguage, targetLanguage);
+      
       console.log("ALT API: Using fallback values due to OpenAI analysis failure");
     }
 

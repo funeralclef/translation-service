@@ -4,10 +4,12 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { PlusCircle } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 
@@ -30,6 +32,7 @@ export default function CustomerOrders() {
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const supabase = createClientComponentClient()
 
   useEffect(() => {
@@ -51,7 +54,7 @@ export default function CustomerOrders() {
           console.error("Error fetching orders:", error)
           setError("Failed to load orders. Please try again later.")
         } else {
-          setOrders(data || [])
+          setOrders((data as unknown as Order[]) || [])
         }
       } catch (err) {
         console.error("Error fetching orders:", err)
@@ -67,15 +70,15 @@ export default function CustomerOrders() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <Badge variant="outline">Pending</Badge>
+        return <Badge variant="outline">{t("orders.pending")}</Badge>
       case "assigned":
-        return <Badge variant="secondary">Assigned</Badge>
+        return <Badge variant="secondary">{t("orders.assignedStatus")}</Badge>
       case "in_progress":
-        return <Badge variant="default">In Progress</Badge>
+        return <Badge variant="default">{t("orders.inProgressStatus")}</Badge>
       case "completed":
-        return <Badge variant="success">Completed</Badge>
+        return <Badge variant="success">{t("orders.completedStatus")}</Badge>
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>
+        return <Badge variant="destructive">{t("orders.cancelledStatus")}</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -89,10 +92,10 @@ export default function CustomerOrders() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">My Orders</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("orders.myOrders")}</h1>
           <Button onClick={() => router.push("/dashboard/customer/orders/create")}>
             <PlusCircle className="mr-2 h-4 w-4" />
-            Create Order
+            {t("orders.createOrder")}
           </Button>
         </div>
 
@@ -108,46 +111,46 @@ export default function CustomerOrders() {
           </div>
         ) : orders.length === 0 ? (
           <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-            <h3 className="mb-2 text-lg font-semibold">No orders yet</h3>
-            <p className="mb-6 text-sm text-muted-foreground">You haven't created any translation orders yet.</p>
-            <Button onClick={() => router.push("/dashboard/customer/orders/create")}>Create your first order</Button>
+            <h3 className="mb-2 text-lg font-semibold">{t("orders.noOrdersYet")}</h3>
+            <p className="mb-6 text-sm text-muted-foreground">{t("orders.noOrdersDescription")}</p>
+            <Button onClick={() => router.push("/dashboard/customer/orders/create")}>{t("orders.createFirstOrder")}</Button>
           </div>
         ) : (
           <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Languages</TableHead>
-                  <TableHead>Deadline</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Cost</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="border-b bg-muted/50">
+              <div className="grid grid-cols-7 gap-4 p-4 font-medium text-sm">
+                <div className="min-w-0">{t("orders.id")}</div>
+                <div className="min-w-0">{t("orders.created")}</div>
+                <div className="min-w-0">{t("orders.languages")}</div>
+                <div className="min-w-0">{t("orders.deadline")}</div>
+                <div className="min-w-0">{t("orders.status")}</div>
+                <div className="min-w-0">{t("orders.cost")}</div>
+                <div className="min-w-0 text-right">{t("orders.actions")}</div>
+              </div>
+            </div>
+            <ScrollArea className="h-[calc(100vh-24rem)] min-h-[300px] max-h-[800px]">
+              <div className="divide-y">
                 {orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell className="font-medium">{order.id.slice(0, 8)}</TableCell>
-                    <TableCell>{formatDate(order.created_at)}</TableCell>
-                    <TableCell>{`${order.source_language} → ${order.target_language}`}</TableCell>
-                    <TableCell>{formatDate(order.deadline)}</TableCell>
-                    <TableCell>{getStatusBadge(order.status)}</TableCell>
-                    <TableCell>${order.cost.toFixed(2)}</TableCell>
-                    <TableCell className="text-right">
+                  <div key={order.id} className="grid grid-cols-7 gap-4 p-4 hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 font-medium text-sm truncate">{order.id.slice(0, 8)}</div>
+                    <div className="min-w-0 text-sm truncate">{formatDate(order.created_at)}</div>
+                    <div className="min-w-0 text-sm truncate">{`${order.source_language} → ${order.target_language}`}</div>
+                    <div className="min-w-0 text-sm truncate">{formatDate(order.deadline)}</div>
+                    <div className="min-w-0">{getStatusBadge(order.status)}</div>
+                    <div className="min-w-0 text-sm truncate">${order.cost.toFixed(2)}</div>
+                    <div className="min-w-0 flex justify-end">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => router.push(`/dashboard/customer/orders/${order.id}`)}
                       >
-                        View
+                        {t("orders.view")}
                       </Button>
-                    </TableCell>
-                  </TableRow>
+                    </div>
+                  </div>
                 ))}
-              </TableBody>
-            </Table>
+              </div>
+            </ScrollArea>
           </div>
         )}
       </div>

@@ -2,10 +2,13 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
+import { formatEstimatedTime } from "@/utils/time-formatting"
+import { formatComplexity } from "@/utils/complexity-formatting"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -78,6 +81,7 @@ interface RecommendedTranslator {
 export default function CreateOrder() {
   const router = useRouter()
   const { user } = useAuth()
+  const { t } = useLanguage()
   const supabase = createClientComponentClient()
 
   const [sourceLanguage, setSourceLanguage] = useState("")
@@ -181,7 +185,7 @@ export default function CreateOrder() {
 
   const analyzeDocument = async () => {
     if (!file || !sourceLanguage || !targetLanguage) {
-      setError("Please upload a file and select languages first")
+      setError(t("orders.uploadFileFirst"))
       return
     }
 
@@ -192,7 +196,7 @@ export default function CreateOrder() {
       // Check file type before uploading
       const fileExt = file.name.split(".").pop()?.toLowerCase();
       if (!fileExt || !['pdf', 'docx', 'txt'].includes(fileExt)) {
-        throw new Error(`Unsupported file type: ${fileExt || 'unknown'}. Only PDF, DOCX, and TXT files are supported.`);
+        throw new Error(`${t("orders.unsupportedFileType")} ${fileExt || 'unknown'}. ${t("orders.onlyPdfDocxTxt")}`);
       }
       
       // Create a unique but readable file name
@@ -321,23 +325,23 @@ export default function CreateOrder() {
     e.preventDefault()
 
     if (!user) {
-      setError("You must be logged in to create an order")
+      setError(t("orders.mustBeLoggedIn"))
       return
     }
 
     if (!file || !sourceLanguage || !targetLanguage || !deadline) {
-      setError("Please fill in all required fields")
+      setError(t("orders.fillAllFields"))
       return
     }
 
     if (comment.length > 200) {
-      setError("Comment must be less than 200 characters")
+      setError(t("orders.commentTooLong"))
       return
     }
 
     // Make sure we have analysis data before proceeding
     if (orderCost === null) {
-      setError("Please analyze the document first")
+      setError(t("orders.analyzeDocumentFirst"))
       return
     }
 
@@ -430,7 +434,7 @@ export default function CreateOrder() {
       router.push("/dashboard/customer/orders")
     } catch (error) {
       console.error("Error creating order:", error)
-      setError("Failed to create order. Please try again.")
+      setError(t("orders.failedToCreateOrder"))
     } finally {
       setLoading(false)
     }
@@ -524,15 +528,15 @@ export default function CreateOrder() {
     <DashboardLayout>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Create New Order</h1>
+          <h1 className="text-3xl font-bold tracking-tight">{t("orders.createNewOrder")}</h1>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Document Information</CardTitle>
-                <CardDescription>Upload your document and provide translation details</CardDescription>
+                <CardTitle>{t("orders.documentInformation")}</CardTitle>
+                <CardDescription>{t("orders.uploadDocumentDetails")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {error && (
@@ -542,19 +546,19 @@ export default function CreateOrder() {
                 )}
 
                 <div className="space-y-2">
-                  <Label htmlFor="file">Upload Document</Label>
+                  <Label htmlFor="file">{t("orders.uploadDocument")}</Label>
                   <div className="flex items-center gap-2">
                     <Input id="file" type="file" onChange={handleFileChange} className="flex-1" />
                   </div>
-                  {file && <p className="text-sm text-muted-foreground">Selected file: {file.name}</p>}
+                  {file && <p className="text-sm text-muted-foreground">{t("orders.selectedFile")} {file.name}</p>}
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label htmlFor="sourceLanguage">Source Language</Label>
+                    <Label htmlFor="sourceLanguage">{t("orders.sourceLanguage")}</Label>
                     <Select value={sourceLanguage} onValueChange={setSourceLanguage}>
                       <SelectTrigger id="sourceLanguage">
-                        <SelectValue placeholder="Select language" />
+                        <SelectValue placeholder={t("orders.selectLanguage")} />
                       </SelectTrigger>
                       <SelectContent>
                         {LANGUAGES.map((language) => (
@@ -567,10 +571,10 @@ export default function CreateOrder() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="targetLanguage">Target Language</Label>
+                    <Label htmlFor="targetLanguage">{t("orders.targetLanguage")}</Label>
                     <Select value={targetLanguage} onValueChange={setTargetLanguage}>
                       <SelectTrigger id="targetLanguage">
-                        <SelectValue placeholder="Select language" />
+                        <SelectValue placeholder={t("orders.selectLanguage")} />
                       </SelectTrigger>
                       <SelectContent>
                         {LANGUAGES.map((language) => (
@@ -584,7 +588,7 @@ export default function CreateOrder() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="deadline">Deadline</Label>
+                  <Label htmlFor="deadline">{t("orders.deadline")}</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
@@ -595,7 +599,7 @@ export default function CreateOrder() {
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {deadline ? format(deadline, "PPP") : <span>Pick a date</span>}
+                        {deadline ? format(deadline, "PPP") : <span>{t("orders.pickDate")}</span>}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0">
@@ -611,7 +615,7 @@ export default function CreateOrder() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Common Tags</Label>
+                  <Label>{t("orders.commonTags")}</Label>
                   <div className="flex flex-wrap gap-2 mt-2">
                     {COMMON_TAGS.map((tag) => (
                       <Badge
@@ -627,18 +631,18 @@ export default function CreateOrder() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="tags">Custom Tags (optional)</Label>
+                  <Label htmlFor="tags">{t("orders.customTags")}</Label>
                   <div className="flex items-center gap-2">
                     <Input
                       id="tags"
                       value={tagInput}
                       onChange={(e) => setTagInput(e.target.value)}
                       onKeyDown={handleTagKeyDown}
-                      placeholder="Add a custom tag and press Enter"
+                      placeholder={t("orders.addCustomTag")}
                       maxLength={20}
                     />
                     <Button type="button" onClick={addTag} variant="outline" size="sm">
-                      Add
+                      {t("orders.add")}
                     </Button>
                   </div>
                   {tags.length > 0 && (
@@ -658,20 +662,20 @@ export default function CreateOrder() {
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    You can add up to 5 tags to help categorize your order
+                    {t("orders.tagsLimit")}
                   </p>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="comment">Comment (optional)</Label>
+                  <Label htmlFor="comment">{t("orders.comment")}</Label>
                   <Textarea
                     id="comment"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
-                    placeholder="Add any special instructions or context for the translator"
+                    placeholder={t("orders.commentPlaceholder")}
                     maxLength={200}
                   />
-                  <p className="text-xs text-muted-foreground">{comment.length}/200 characters</p>
+                  <p className="text-xs text-muted-foreground">{comment.length}/200 {t("orders.charactersCount")}</p>
                 </div>
 
                 <Button
@@ -683,12 +687,12 @@ export default function CreateOrder() {
                   {analyzing ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Analyzing Document...
+                      {t("orders.analyzingDocument")}
                     </>
                   ) : (
                     <>
                       <Upload className="mr-2 h-4 w-4" />
-                      Analyze Document
+                      {t("orders.analyzeDocument")}
                     </>
                   )}
                 </Button>
@@ -697,17 +701,17 @@ export default function CreateOrder() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Order Summary</CardTitle>
-                <CardDescription>Review your order details before submission</CardDescription>
+                <CardTitle>{t("orders.orderSummary")}</CardTitle>
+                <CardDescription>{t("orders.reviewOrderDetails")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {orderCost !== null ? (
                   <>
                     <div className="rounded-lg bg-muted p-4">
-                      <h3 className="mb-2 font-semibold">Document Analysis</h3>
+                      <h3 className="mb-2 font-semibold">{t("orders.documentAnalysis")}</h3>
 
                       <div className="mb-4">
-                        <p className="text-sm font-medium">Classification:</p>
+                        <p className="text-sm font-medium">{t("orders.classification")}</p>
                         <div className="flex flex-wrap gap-2 mt-1">
                           {orderClassification.map((tag) => (
                             <Badge key={tag} variant="outline">
@@ -718,24 +722,24 @@ export default function CreateOrder() {
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-sm mb-4">
-                        <div className="font-medium">Word Count:</div>
+                        <div className="font-medium">{t("orders.wordCount")}</div>
                         <div>{wordCount}</div>
 
-                        <div className="font-medium">Complexity Score:</div>
-                        <div>{complexityScore}</div>
+                        <div className="font-medium">{t("orders.complexityScore")}</div>
+                        <div>{complexityScore ? formatComplexity(complexityScore) : "N/A"}</div>
 
-                        <div className="font-medium">Estimated Hours:</div>
-                        <div>{estimatedHours}</div>
+                        <div className="font-medium">{t("orders.estimatedHours")}</div>
+                        <div>{estimatedHours ? formatEstimatedTime(estimatedHours) : "0 minutes"}</div>
                       </div>
 
                       <div>
-                        <p className="text-sm font-medium">Estimated Cost:</p>
+                        <p className="text-sm font-medium">{t("orders.estimatedCost")}</p>
                         <p className="text-2xl font-bold">${orderCost.toFixed(2)}</p>
                       </div>
                     </div>
 
                     <div className="space-y-3">
-                      <h3 className="font-semibold">Translator Assignment</h3>
+                      <h3 className="font-semibold">{t("orders.translatorAssignment")}</h3>
                       
                       <div className="flex items-center space-x-2">
                         <Checkbox 
@@ -747,15 +751,15 @@ export default function CreateOrder() {
                           htmlFor="automaticAssignment"
                           className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                         >
-                          Automatic Assignment (system will select the best translator)
+                          {t("orders.automaticAssignment")}
                         </label>
                       </div>
                       
                       {automaticAssignment && selectedTranslatorId && recommendedTranslators.length > 0 && (
                         <div className="rounded-lg bg-primary/5 p-3 border-l-4 border-primary mt-4">
                           <div className="text-sm flex items-center">
-                            <span className="font-medium mr-2">System selected:</span>
-                            <span>{availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}</span>
+                            <span className="font-medium mr-2">{t("orders.systemSelected")}</span>
+                            {availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}
                             {recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score && (
                               <span className="ml-auto text-xs text-primary font-medium flex items-center gap-1">
                                 <div className="relative h-4 w-4 flex-shrink-0">
@@ -782,7 +786,7 @@ export default function CreateOrder() {
                                     />
                                   </svg>
                                 </div>
-                                {Math.round((recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score || 0) * 100)}% match
+                                {Math.round((recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score || 0) * 100)}% {t("orders.match")}
                               </span>
                             )}
                           </div>
@@ -792,7 +796,7 @@ export default function CreateOrder() {
                       {!automaticAssignment && (
                         <>
                           <div className="flex justify-between items-center">
-                            <h4 className="text-sm font-medium">Available Translators</h4>
+                            <h4 className="text-sm font-medium">{t("orders.availableTranslators")}</h4>
 
                     {recommendedTranslators.length > 0 && (
                               <div className="flex items-center space-x-2">
@@ -805,7 +809,7 @@ export default function CreateOrder() {
                                   htmlFor="showRecommended"
                                   className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                                 >
-                                  Show only recommended
+                                  {t("orders.showOnlyRecommended")}
                                 </label>
                               </div>
                             )}
@@ -814,22 +818,22 @@ export default function CreateOrder() {
                           {/* Styled debug info */}
                           <div className="flex flex-wrap gap-2 mb-3 p-2 rounded-md bg-muted/30 border border-border">
                             <div className="flex items-center">
-                              <span className="text-xs font-medium text-muted-foreground mr-1">Available:</span>
+                              <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.available")}</span>
                               <span className="text-xs font-semibold">{availableTranslators.length}</span>
                             </div>
                             <div className="h-4 border-r border-border/50"></div>
                             <div className="flex items-center">
-                              <span className="text-xs font-medium text-muted-foreground mr-1">Showing:</span>
+                              <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.showing")}</span>
                               <span className="text-xs font-semibold">{filteredTranslators.length}</span>
                             </div>
                             <div className="h-4 border-r border-border/50"></div>
                             <div className="flex items-center">
-                              <span className="text-xs font-medium text-muted-foreground mr-1">Recommended:</span>
+                              <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.recommended")}</span>
                               <span className="text-xs font-semibold">{recommendedTranslators.length}</span>
                             </div>
                             <div className="h-4 border-r border-border/50"></div>
                             <div className="flex items-center">
-                              <span className="text-xs font-medium text-muted-foreground mr-1">With language match:</span>
+                              <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.withLanguageMatch")}</span>
                               <span className="text-xs font-semibold">{enhancedTranslators.filter(t => t.hasLanguageMatch).length}</span>
                             </div>
                           </div>
@@ -837,13 +841,13 @@ export default function CreateOrder() {
                           {loadingTranslators ? (
                             <div className="text-center py-3">
                               <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                              <p className="text-sm text-muted-foreground mt-1">Loading translators...</p>
+                              <p className="text-sm text-muted-foreground mt-1">{t("orders.loadingTranslators")}</p>
                             </div>
                           ) : filteredTranslators.length === 0 ? (
                             <div className="text-center py-3 text-muted-foreground text-sm">
                               {showOnlyRecommended 
-                                ? "No recommended translators available" 
-                                : "No translators available"}
+                                ? t("orders.noRecommendedTranslators")
+                                : t("orders.noTranslatorsAvailable")}
                             </div>
                           ) : (
                             <ScrollArea className="h-[320px] rounded-md border bg-muted/10 p-2">
@@ -891,8 +895,8 @@ export default function CreateOrder() {
                                             {hasLanguageMatch ? (
                                               <span 
                                                 className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-50 text-green-600 border border-green-200" 
-                                                title="Matches required languages"
-                                                aria-label="This translator matches the required languages"
+                                                title={t("orders.matchesRequiredLanguages")}
+                                                aria-label={t("orders.matchesRequiredLanguages")}
                                               >
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                                                   <circle cx="12" cy="12" r="10"></circle>
@@ -903,8 +907,8 @@ export default function CreateOrder() {
                                             ) : (
                                               <span 
                                                 className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 text-red-600 border border-red-200" 
-                                                title="Does not match required languages"
-                                                aria-label="This translator does not match the required languages"
+                                                title={t("orders.doesNotMatchRequiredLanguages")}
+                                                aria-label={t("orders.doesNotMatchRequiredLanguages")}
                                               >
                                                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                                                   <circle cx="12" cy="12" r="10"></circle>
@@ -915,7 +919,7 @@ export default function CreateOrder() {
                                             )}
                                             {isRecommended && (
                                               <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 px-1.5 py-0 h-5">
-                                                Recommended
+                                                {t("orders.recommended")}
                                               </Badge>
                                             )}
                                             {isRecommended && recommendationScore > 0 && (
@@ -959,7 +963,7 @@ export default function CreateOrder() {
                                       </div>
                                       
                                       <div className="mt-2">
-                                        <div className="text-xs text-muted-foreground mb-1">Languages:</div>
+                                        <div className="text-xs text-muted-foreground mb-1">{t("orders.languages")}</div>
                                         <div className="flex flex-wrap gap-1">
                                           {showLanguages.map(lang => (
                                             <Badge key={lang} variant="secondary" className="text-xs px-2 py-0 h-5">
@@ -968,14 +972,14 @@ export default function CreateOrder() {
                                           ))}
                                           {!isExpanded && translator.languages.length > 5 && (
                                             <span className="text-xs text-muted-foreground flex items-center">
-                                              +{translator.languages.length - 5} more
+                                              +{translator.languages.length - 5} {t("orders.more")}
                                             </span>
                                           )}
                                         </div>
                                       </div>
                                       
                                       <div className="mt-3">
-                                        <div className="text-xs text-muted-foreground mb-1">Expertise:</div>
+                                        <div className="text-xs text-muted-foreground mb-1">{t("orders.expertise")}</div>
                                         <div className="flex flex-wrap gap-1">
                                           {showExpertise.map(exp => (
                                             <Badge key={exp} variant="outline" className="text-xs px-2 py-0 h-5">
@@ -984,7 +988,7 @@ export default function CreateOrder() {
                                           ))}
                                           {!isExpanded && translator.expertise.length > 5 && (
                                             <span className="text-xs text-muted-foreground flex items-center">
-                                              +{translator.expertise.length - 5} more
+                                              +{translator.expertise.length - 5} {t("orders.more")}
                                             </span>
                                           )}
                                         </div>
@@ -997,7 +1001,7 @@ export default function CreateOrder() {
                                             className="text-xs text-primary hover:underline focus:outline-none"
                                             type="button" // Explicitly prevent form submission
                                           >
-                                            {isExpanded ? 'Show less' : 'Show more'}
+                                            {isExpanded ? t("orders.showLess") : t("orders.showMore")}
                                           </button>
                                         </div>
                                       )}
@@ -1011,7 +1015,7 @@ export default function CreateOrder() {
                           {selectedTranslatorId && !automaticAssignment && (
                             <div className="rounded-lg bg-primary/5 p-3 border-l-4 border-primary mt-4">
                               <div className="text-sm flex items-center">
-                                <span className="font-medium mr-2">Selected Translator:</span>
+                                <span className="font-medium mr-2">{t("orders.selectedTranslator")}</span>
                                 {availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}
                               </div>
                             </div>
@@ -1021,24 +1025,24 @@ export default function CreateOrder() {
                       </div>
 
                     <div className="space-y-2">
-                      <h3 className="font-semibold">Order Details</h3>
+                      <h3 className="font-semibold">{t("orders.orderDetails")}</h3>
 
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div className="font-medium">Document:</div>
+                        <div className="font-medium">{t("orders.document")}</div>
                         <div>{file?.name}</div>
 
-                        <div className="font-medium">Source Language:</div>
+                        <div className="font-medium">{t("orders.sourceLanguage")}</div>
                         <div>{sourceLanguage}</div>
 
-                        <div className="font-medium">Target Language:</div>
+                        <div className="font-medium">{t("orders.targetLanguage")}</div>
                         <div>{targetLanguage}</div>
 
-                        <div className="font-medium">Deadline:</div>
-                        <div>{deadline ? format(deadline, "PPP") : "Not set"}</div>
+                        <div className="font-medium">{t("orders.deadline")}</div>
+                        <div>{deadline ? format(deadline, "PPP") : t("orders.notSet")}</div>
 
                         {comment && (
                           <>
-                            <div className="font-medium">Comment:</div>
+                            <div className="font-medium">{t("orders.comment")}</div>
                             <div>{comment}</div>
                           </>
                         )}
@@ -1047,9 +1051,9 @@ export default function CreateOrder() {
                   </>
                 ) : (
                   <div className="flex h-[300px] flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-                    <h3 className="mb-2 text-lg font-semibold">No Analysis Yet</h3>
+                    <h3 className="mb-2 text-lg font-semibold">{t("orders.noAnalysisYet")}</h3>
                     <p className="mb-6 text-sm text-muted-foreground">
-                      Upload a document and click "Analyze Document" to see the estimated cost and classification.
+                      {t("orders.noAnalysisDescription")}
                     </p>
                   </div>
                 )}
@@ -1063,10 +1067,10 @@ export default function CreateOrder() {
                   {loading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating Order...
+                      {t("orders.creatingOrder")}
                     </>
                   ) : (
-                    "Create Order"
+                    t("orders.createOrder")
                   )}
                 </Button>
               </CardFooter>

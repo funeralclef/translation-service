@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { formatEstimatedTime } from "@/utils/time-formatting"
+import { formatComplexity } from "@/utils/complexity-formatting"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -508,7 +510,7 @@ export default function AdminOrderDetail() {
                       </div>
                       <div>
                         <div className="text-sm font-medium">Complexity Score</div>
-                        <div>{analysis.complexity_score.toFixed(2)}</div>
+                        <div>{formatComplexity(analysis.complexity_score)}</div>
                       </div>
                     </div>
 
@@ -517,7 +519,7 @@ export default function AdminOrderDetail() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm font-medium">Estimated Hours</div>
-                        <div>{analysis.estimated_hours.toFixed(2)}</div>
+                        <div>{formatEstimatedTime(analysis.estimated_hours)}</div>
                       </div>
                       <div>
                         <div className="text-sm font-medium">Cost</div>

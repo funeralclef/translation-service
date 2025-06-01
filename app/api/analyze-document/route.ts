@@ -102,7 +102,10 @@ export async function POST(request: Request) {
       classification = ["General"];
       complexityScore = 0.75; // Moderate complexity
       estimatedHours = (wordCount / 500) * complexityScore; // Basic calculation
-      cost = Math.max(25, wordCount * 0.05); // Minimum $25 or 5 cents per word
+      
+      // Use proper cost calculation instead of hardcoded minimum
+      const { calculateCost } = await import("@/utils/openai");
+      cost = calculateCost(wordCount, complexityScore, sourceLanguage, targetLanguage);
       
       console.log("API: Using fallback values due to OpenAI analysis failure");
     }

@@ -10,6 +10,9 @@ import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
 import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
+import { formatEstimatedTime } from "@/utils/time-formatting"
+import { formatComplexity } from "@/utils/complexity-formatting"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -58,6 +61,7 @@ export default function TranslatorOrderDetail() {
   const orderId = params.id as string
   const { user } = useAuth()
   const supabase = createClientComponentClient()
+  const { t } = useLanguage()
 
   const [order, setOrder] = useState<Order | null>(null)
   const [analysis, setAnalysis] = useState<OrderAnalysis | null>(null)
@@ -100,6 +104,7 @@ export default function TranslatorOrderDetail() {
 
         // Save the assignment status
         setAssignment(assignmentData as unknown as Assignment)
+        console.log("Assignment data loaded:", assignmentData);
 
         // Fetch order details
         const { data: orderData, error: orderError } = await supabase
@@ -153,10 +158,16 @@ export default function TranslatorOrderDetail() {
   }
 
   const acceptRequest = async () => {
-    if (!order || !assignment) return;
+    if (!order || !assignment) {
+      console.log("Missing order or assignment:", { order: !!order, assignment: !!assignment });
+      return;
+    }
 
     try {
       setSubmitting(true);
+      setError(null);
+      setSuccess(null);
+      console.log("Accepting request for assignment:", assignment.id);
       
       // Update assignment status
       const { error: updateAssignmentError } = await supabase
@@ -164,7 +175,12 @@ export default function TranslatorOrderDetail() {
         .update({ status: null }) // Remove the "requested" status
         .eq("id", assignment.id);
 
-      if (updateAssignmentError) throw updateAssignmentError;
+      if (updateAssignmentError) {
+        console.error("Assignment update error:", updateAssignmentError);
+        throw updateAssignmentError;
+      }
+
+      console.log("Assignment updated successfully");
 
       // Update order status
       const { error: updateOrderError } = await supabase
@@ -172,15 +188,21 @@ export default function TranslatorOrderDetail() {
         .update({ status: "assigned" })
         .eq("id", order.id);
 
-      if (updateOrderError) throw updateOrderError;
+      if (updateOrderError) {
+        console.error("Order update error:", updateOrderError);
+        throw updateOrderError;
+      }
+
+      console.log("Order updated successfully");
 
       // Update UI
       setOrder({ ...order, status: "assigned" });
       setAssignment({ ...assignment, status: null });
-      setSuccess("Translation request accepted");
+      setSuccess(t("translatorJobs.orderDetails.successRequestAccepted"));
+      console.log("UI updated successfully");
     } catch (error) {
       console.error("Error accepting request:", error);
-      setError("Failed to accept request. Please try again.");
+      setError(t("translatorJobs.orderDetails.errorAcceptRequest"));
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +226,7 @@ export default function TranslatorOrderDetail() {
       router.push("/dashboard/translator/jobs?tab=requests");
     } catch (error) {
       console.error("Error declining request:", error);
-      setError("Failed to decline request. Please try again.");
+      setError(t("translatorJobs.orderDetails.errorDeclineRequest"));
     } finally {
       setSubmitting(false);
     }
@@ -223,10 +245,10 @@ export default function TranslatorOrderDetail() {
 
       // Update local state
       setOrder({ ...order, status: "in_progress" })
-      setSuccess("You've started working on this order")
+      setSuccess(t("translatorJobs.orderDetails.successStartedWorking"))
     } catch (error) {
       console.error("Error starting work:", error)
-      setError("Failed to update order status")
+      setError(t("translatorJobs.orderDetails.errorUpdateStatus"))
     } finally {
       setSubmitting(false)
     }
@@ -275,10 +297,10 @@ export default function TranslatorOrderDetail() {
 
       // Update local state
       setOrder({ ...order, status: "completed" })
-      setSuccess("Translation submitted successfully")
+      setSuccess(t("translatorJobs.orderDetails.successTranslationSubmitted"))
     } catch (error) {
       console.error("Error submitting translation:", error)
-      setError("Failed to submit translation")
+      setError(t("translatorJobs.orderDetails.errorSubmitTranslation"))
     } finally {
       setSubmitting(false)
     }
@@ -302,9 +324,9 @@ export default function TranslatorOrderDetail() {
     return (
       <DashboardLayout>
         <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-          <h3 className="mb-2 text-lg font-semibold">Error</h3>
-          <p className="mb-6 text-sm text-muted-foreground">{error || "Order not found"}</p>
-          <Button onClick={() => router.push("/dashboard/translator/jobs")}>Back to Jobs</Button>
+          <h3 className="mb-2 text-lg font-semibold">{t("translatorJobs.orderDetails.error")}</h3>
+          <p className="mb-6 text-sm text-muted-foreground">{error || t("translatorJobs.orderDetails.orderNotFound")}</p>
+          <Button onClick={() => router.push("/dashboard/translator/jobs")}>{t("translatorJobs.orderDetails.backToJobs")}</Button>
         </div>
       </DashboardLayout>
     )
@@ -315,11 +337,11 @@ export default function TranslatorOrderDetail() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
-            <p className="text-muted-foreground">Order ID: {order.id}</p>
+            <h1 className="text-3xl font-bold tracking-tight">{t("translatorJobs.orderDetails.title")}</h1>
+            <p className="text-muted-foreground">{t("translatorJobs.orderDetails.orderId")} {order.id}</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/dashboard/translator/jobs")}>
-            Back to Jobs
+            {t("translatorJobs.orderDetails.backToJobs")}
           </Button>
         </div>
 
@@ -339,7 +361,7 @@ export default function TranslatorOrderDetail() {
           <Card>
             <CardHeader>
               <div className="flex justify-between items-center">
-                <CardTitle>Order Information</CardTitle>
+                <CardTitle>{t("translatorJobs.orderDetails.orderInformation")}</CardTitle>
                 <Badge
                   variant={
                     assignment && assignment.status === "requested" 
@@ -352,21 +374,21 @@ export default function TranslatorOrderDetail() {
                   }
                 >
                   {assignment && assignment.status === "requested"
-                    ? "Request Pending"
+                    ? t("translatorJobs.orderDetails.statusRequestPending")
                     : order.status === "assigned"
-                      ? "Assigned"
+                      ? t("translatorJobs.orderDetails.statusAssigned")
                       : order.status === "in_progress"
-                        ? "In Progress"
-                        : "Completed"}
+                        ? t("translatorJobs.orderDetails.statusInProgress")
+                        : t("translatorJobs.orderDetails.statusCompleted")}
                 </Badge>
               </div>
-              <CardDescription>Details about the translation order</CardDescription>
+              <CardDescription>{t("translatorJobs.orderDetails.orderDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Customer</span>
+                  <span className="font-medium">{t("translatorJobs.orderDetails.customer")}</span>
                 </div>
                 {customer ? (
                   <div className="text-sm">
@@ -374,7 +396,7 @@ export default function TranslatorOrderDetail() {
                     <div className="text-muted-foreground">{customer.email}</div>
                   </div>
                 ) : (
-                  <div className="text-sm text-muted-foreground">Customer information not available</div>
+                  <div className="text-sm text-muted-foreground">{t("translatorJobs.orderDetails.customerNotAvailable")}</div>
                 )}
               </div>
 
@@ -383,14 +405,14 @@ export default function TranslatorOrderDetail() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Document</span>
+                  <span className="font-medium">{t("translatorJobs.orderDetails.document")}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="text-sm">{order.document_url.split("/").pop()?.split("?")[0] || "Document"}</div>
                   <Button variant="outline" size="sm" asChild>
                     <a href={order.document_url} target="_blank" rel="noopener noreferrer">
                       <Download className="mr-2 h-4 w-4" />
-                      Download
+                      {t("translatorJobs.orderDetails.download")}
                     </a>
                   </Button>
                 </div>
@@ -400,11 +422,11 @@ export default function TranslatorOrderDetail() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-medium">Source Language</div>
+                  <div className="text-sm font-medium">{t("translatorJobs.orderDetails.sourceLanguage")}</div>
                   <div>{order.source_language}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium">Target Language</div>
+                  <div className="text-sm font-medium">{t("translatorJobs.orderDetails.targetLanguage")}</div>
                   <div>{order.target_language}</div>
                 </div>
               </div>
@@ -414,27 +436,27 @@ export default function TranslatorOrderDetail() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Timeline</span>
+                  <span className="font-medium">{t("translatorJobs.orderDetails.timeline")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm font-medium">Created</div>
+                    <div className="text-sm font-medium">{t("translatorJobs.orderDetails.created")}</div>
                     <div>{formatDate(order.created_at)}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium">Deadline</div>
+                    <div className="text-sm font-medium">{t("translatorJobs.orderDetails.deadline")}</div>
                     <div className="flex items-center">
                       {formatDate(order.deadline)}
                       {new Date(order.deadline) < new Date() ? (
                         <Badge variant="destructive" className="ml-2">
-                          Overdue
+                          {t("translatorJobs.orderDetails.overdue")}
                         </Badge>
                       ) : (
                         <Badge variant="outline" className="ml-2">
                           {Math.ceil(
                             (new Date(order.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
                           )}{" "}
-                          days left
+                          {t("translatorJobs.orderDetails.daysLeft")}
                         </Badge>
                       )}
                     </div>
@@ -445,7 +467,7 @@ export default function TranslatorOrderDetail() {
               <Separator />
 
               <div className="space-y-2">
-                <div className="font-medium">Tags</div>
+                <div className="font-medium">{t("translatorJobs.orderDetails.tags")}</div>
                 <div className="flex flex-wrap gap-2">
                   {order.tags.map((tag) => (
                     <Badge key={tag} variant="secondary">
@@ -459,7 +481,7 @@ export default function TranslatorOrderDetail() {
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <div className="font-medium">Customer Comment</div>
+                    <div className="font-medium">{t("translatorJobs.orderDetails.customerComment")}</div>
                     <div className="text-sm">{order.comment}</div>
                   </div>
                 </>
@@ -470,20 +492,20 @@ export default function TranslatorOrderDetail() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Analysis</CardTitle>
-                <CardDescription>Document analysis and payment information</CardDescription>
+                <CardTitle>{t("translatorJobs.orderDetails.analysis")}</CardTitle>
+                <CardDescription>{t("translatorJobs.orderDetails.analysisDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {analysis ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm font-medium">Word Count</div>
+                        <div className="text-sm font-medium">{t("translatorJobs.orderDetails.wordCount")}</div>
                         <div>{analysis.word_count}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">Complexity Score</div>
-                        <div>{analysis.complexity_score}</div>
+                        <div className="text-sm font-medium">{t("translatorJobs.orderDetails.complexityScore")}</div>
+                        <div>{formatComplexity(analysis.complexity_score)}</div>
                       </div>
                     </div>
 
@@ -491,11 +513,11 @@ export default function TranslatorOrderDetail() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm font-medium">Estimated Hours</div>
-                        <div>{analysis.estimated_hours.toFixed(2)}</div>
+                        <div className="text-sm font-medium">{t("translatorJobs.orderDetails.estimatedHours")}</div>
+                        <div>{formatEstimatedTime(analysis.estimated_hours)}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">Payment</div>
+                        <div className="text-sm font-medium">{t("translatorJobs.orderDetails.payment")}</div>
                         <div className="font-bold">${order.cost.toFixed(2)}</div>
                       </div>
                     </div>
@@ -503,7 +525,7 @@ export default function TranslatorOrderDetail() {
                     <Separator />
 
                     <div className="space-y-2">
-                      <div className="font-medium">Classification</div>
+                      <div className="font-medium">{t("translatorJobs.orderDetails.classification")}</div>
                       <div className="flex flex-wrap gap-2">
                         {analysis.classification.map((tag) => (
                           <Badge key={tag} variant="outline">
@@ -514,7 +536,7 @@ export default function TranslatorOrderDetail() {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-4 text-muted-foreground">No analysis data available</div>
+                  <div className="text-center py-4 text-muted-foreground">{t("translatorJobs.orderDetails.noAnalysisData")}</div>
                 )}
               </CardContent>
             </Card>
@@ -523,26 +545,26 @@ export default function TranslatorOrderDetail() {
               <CardHeader>
                 <CardTitle>
                   {assignment && assignment.status === "requested"
-                    ? "Translation Request"
+                    ? t("translatorJobs.orderDetails.translationRequest")
                     : order.status === "completed"
-                      ? "Translation Completed"
-                      : "Submit Translation"}
+                      ? t("translatorJobs.orderDetails.translationCompleted")
+                      : t("translatorJobs.orderDetails.submitTranslation")}
                 </CardTitle>
                 <CardDescription>
                   {assignment && assignment.status === "requested"
-                    ? "Review and respond to this translation request"
+                    ? t("translatorJobs.orderDetails.requestDescription")
                     : order.status === "completed"
-                      ? "This order has been completed"
-                      : "Upload your translated document and add notes"}
+                      ? t("translatorJobs.orderDetails.completedDescription")
+                      : t("translatorJobs.orderDetails.submitDescription")}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {assignment && assignment.status === "requested" ? (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
                     <FileText className="h-12 w-12 text-primary/70 mb-4" />
-                    <h3 className="text-lg font-semibold">Translation Request</h3>
+                    <h3 className="text-lg font-semibold">{t("translatorJobs.orderDetails.requestTitle")}</h3>
                     <p className="text-sm text-muted-foreground mt-2 max-w-sm">
-                      A customer has selected you for this translation job. Would you like to accept this assignment?
+                      {t("translatorJobs.orderDetails.requestMessage")}
                     </p>
                     <div className="flex gap-3 mt-6">
                       <Button 
@@ -553,10 +575,10 @@ export default function TranslatorOrderDetail() {
                         {submitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
+                            {t("translatorJobs.orderDetails.processing")}
                           </>
                         ) : (
-                          "Accept Request"
+                          t("translatorJobs.orderDetails.acceptRequest")
                         )}
                       </Button>
                       <Button 
@@ -565,22 +587,22 @@ export default function TranslatorOrderDetail() {
                         disabled={submitting}
                         className="min-w-32"
                       >
-                        Decline
+                        {t("translatorJobs.orderDetails.decline")}
                       </Button>
                     </div>
                   </div>
                 ) : order.status === "completed" ? (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
                     <CheckCircle2 className="h-12 w-12 text-green-500 mb-4" />
-                    <h3 className="text-lg font-semibold">Translation Completed</h3>
+                    <h3 className="text-lg font-semibold">{t("translatorJobs.orderDetails.completedTitle")}</h3>
                     <p className="text-sm text-muted-foreground mt-2">
-                      You have successfully completed this translation order.
+                      {t("translatorJobs.orderDetails.completedMessage")}
                     </p>
                     {order.translated_document_url && (
                       <Button variant="outline" size="sm" className="mt-4" asChild>
                         <a href={order.translated_document_url} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-2 h-4 w-4" />
-                          Download Translated Document
+                          {t("translatorJobs.orderDetails.downloadTranslatedDocument")}
                         </a>
                       </Button>
                     )}
@@ -588,7 +610,7 @@ export default function TranslatorOrderDetail() {
                 ) : (
                   <>
                     <div className="space-y-2">
-                      <Label htmlFor="translatedFile">Upload Translated Document</Label>
+                      <Label htmlFor="translatedFile">{t("translatorJobs.orderDetails.uploadTranslatedDocument")}</Label>
                       <Input
                         id="translatedFile"
                         type="file"
@@ -596,15 +618,15 @@ export default function TranslatorOrderDetail() {
                         disabled={order.status === "assigned" || submitting}
                       />
                       {translatedFile && (
-                        <p className="text-sm text-muted-foreground">Selected file: {translatedFile.name}</p>
+                        <p className="text-sm text-muted-foreground">{t("translatorJobs.orderDetails.selectedFile")} {translatedFile.name}</p>
                       )}
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="notes">Translation Notes (Optional)</Label>
+                      <Label htmlFor="notes">{t("translatorJobs.orderDetails.translationNotes")}</Label>
                       <Textarea
                         id="notes"
-                        placeholder="Add any notes about the translation for the customer"
+                        placeholder={t("translatorJobs.orderDetails.notesPlaceholder")}
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         disabled={order.status === "assigned" || submitting}
@@ -617,10 +639,10 @@ export default function TranslatorOrderDetail() {
                         {submitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Processing...
+                            {t("translatorJobs.orderDetails.processing")}
                           </>
                         ) : (
-                          "Start Working on This Order"
+                          t("translatorJobs.orderDetails.startWorkingOrder")
                         )}
                       </Button>
                     ) : (
@@ -628,12 +650,12 @@ export default function TranslatorOrderDetail() {
                         {submitting ? (
                           <>
                             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Submitting...
+                            {t("translatorJobs.orderDetails.submitting")}
                           </>
                         ) : (
                           <>
                             <Upload className="mr-2 h-4 w-4" />
-                            Submit Translation
+                            {t("translatorJobs.orderDetails.submitTranslation")}
                           </>
                         )}
                       </Button>

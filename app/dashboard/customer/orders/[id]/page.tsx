@@ -3,6 +3,10 @@
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { createClientComponentClient } from "@/utils/supabase/client"
+import { useAuth } from "@/components/auth-provider"
+import { useLanguage } from "@/components/language-provider"
+import { formatEstimatedTime } from "@/utils/time-formatting"
+import { formatComplexity } from "@/utils/complexity-formatting"
 import DashboardLayout from "@/components/dashboard-layout"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -73,6 +77,7 @@ export default function OrderDetail() {
   const router = useRouter()
   const params = useParams()
   const orderId = params.id as string
+  const { t } = useLanguage()
   const supabase = createClientComponentClient()
 
   const [order, setOrder] = useState<Order | null>(null)
@@ -198,6 +203,70 @@ export default function OrderDetail() {
           if (response.ok) {
             const data = await response.json();
             const recommendedList = data.recommendedTranslators || [];
+            
+            // 🎯 CLIENT-SIDE RECOMMENDATION LOGGING 
+            console.group('🌐 CLIENT-SIDE RECOMMENDATION RESULTS');
+            console.log('📊 API Response Data:', {
+              totalRecommendations: recommendedList.length,
+              orderInfo: {
+                orderId: order.id,
+                languagePair: `${order.source_language} → ${order.target_language}`,
+                customerId: order.customer_id
+              }
+            });
+            
+            if (recommendedList.length > 0) {
+              console.log('📈 TOP RECOMMENDATIONS:');
+              console.table(recommendedList.slice(0, 10).map((translator: any, index: number) => ({
+                'Rank': index + 1,
+                'Name': translator.full_name,
+                'Hybrid Score': translator.recommendation_score?.toFixed(4) || '0.0000',
+                'Content Score': translator.content_score?.toFixed(4) || '0.0000',
+                'Collaborative Score': translator.collaborative_score?.toFixed(4) || '0.0000',
+                'Rating': translator.rating,
+                'Languages': translator.languages?.join(', ') || 'N/A'
+              })));
+              
+              console.log('🎯 DETAILED BREAKDOWN:');
+              recommendedList.slice(0, 5).forEach((translator: any, index: number) => {
+                console.group(`#${index + 1} ${translator.full_name}`);
+                console.log('📊 Scores:', {
+                  hybridScore: translator.recommendation_score?.toFixed(4) || '0.0000',
+                  contentScore: translator.content_score?.toFixed(4) || '0.0000',
+                  collaborativeScore: translator.collaborative_score?.toFixed(4) || '0.0000'
+                });
+                console.log('👤 Profile:', {
+                  rating: translator.rating,
+                  languages: translator.languages,
+                  expertise: translator.expertise,
+                  totalOrders: translator.total_orders || 'N/A',
+                  completedOrders: translator.completed_orders || 'N/A'
+                });
+                console.groupEnd();
+              });
+              
+              // Calculate recommendation quality metrics
+              const avgHybridScore = recommendedList.reduce((sum: number, t: any) => sum + (t.recommendation_score || 0), 0) / recommendedList.length;
+              const topScore = recommendedList[0]?.recommendation_score || 0;
+              const hasCollaborativeData = recommendedList.some((t: any) => (t.collaborative_score || 0) > 0);
+              
+              console.log('📊 QUALITY METRICS:', {
+                averageHybridScore: avgHybridScore.toFixed(4),
+                topScore: topScore.toFixed(4),
+                hasCollaborativeData,
+                recommendationStrength: topScore > 0.5 ? 'Strong' : topScore > 0.3 ? 'Moderate' : 'Weak',
+                filteringType: hasCollaborativeData ? 'Hybrid (Content + Collaborative)' : 'Content-Based Only'
+              });
+              
+            } else {
+              console.log('⚠️ No recommendations returned');
+              console.log('💡 This could mean:');
+              console.log('   - No translators match the language pair');
+              console.log('   - All translators have 0 scores');
+              console.log('   - Error in recommendation system');
+            }
+            console.groupEnd();
+            
             setRecommendedTranslators(recommendedList);
             
             // Mark translators as recommended and add their scores
@@ -339,15 +408,15 @@ export default function OrderDetail() {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "pending":
-        return <Badge variant="outline">Pending</Badge>
+        return <Badge variant="outline">{t("orders.pending")}</Badge>
       case "assigned":
-        return <Badge variant="secondary">Assigned</Badge>
+        return <Badge variant="secondary">{t("orders.assignedStatus")}</Badge>
       case "in_progress":
-        return <Badge variant="default">In Progress</Badge>
+        return <Badge variant="default">{t("orders.inProgressStatus")}</Badge>
       case "completed":
-        return <Badge variant="success">Completed</Badge>
+        return <Badge variant="success">{t("orders.completedStatus")}</Badge>
       case "cancelled":
-        return <Badge variant="destructive">Cancelled</Badge>
+        return <Badge variant="destructive">{t("orders.cancelledStatus")}</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -371,9 +440,9 @@ export default function OrderDetail() {
     return (
       <DashboardLayout>
         <div className="flex h-40 flex-col items-center justify-center rounded-lg border border-dashed p-8 text-center">
-          <h3 className="mb-2 text-lg font-semibold">Error</h3>
-          <p className="mb-6 text-sm text-muted-foreground">{error || "Order not found"}</p>
-          <Button onClick={() => router.push("/dashboard/customer/orders")}>Back to Orders</Button>
+          <h3 className="mb-2 text-lg font-semibold">{t("orders.errorText")}</h3>
+          <p className="mb-6 text-sm text-muted-foreground">{error || t("orders.orderNotFound")}</p>
+          <Button onClick={() => router.push("/dashboard/customer/orders")}>{t("orders.backToOrders")}</Button>
         </div>
       </DashboardLayout>
     )
@@ -384,23 +453,23 @@ export default function OrderDetail() {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight">Order Details</h1>
+            <h1 className="text-3xl font-bold tracking-tight">{t("orders.orderDetails")}</h1>
             <p className="text-muted-foreground">Order ID: {order.id}</p>
           </div>
           <Button variant="outline" onClick={() => router.push("/dashboard/customer/orders")}>
-            Back to Orders
+            {t("orders.backToOrders")}
           </Button>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Order Information</CardTitle>
-              <CardDescription>Details about your translation order</CardDescription>
+              <CardTitle>{t("orders.orderInformation")}</CardTitle>
+              <CardDescription>{t("orders.orderDetailsDescription")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <div className="font-medium">Status</div>
+                <div className="font-medium">{t("orders.status")}</div>
                 <div>{getStatusBadge(order.status)}</div>
               </div>
 
@@ -409,7 +478,7 @@ export default function OrderDetail() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <FileText className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Document</span>
+                  <span className="font-medium">{t("orders.document")}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-sm truncate max-w-[60%]" title={order.document_url.split("/").pop()?.split("?")[0] || "Document"}>
@@ -418,7 +487,7 @@ export default function OrderDetail() {
                   <Button variant="outline" size="sm" asChild className="flex-shrink-0">
                     <a href={order.document_url} target="_blank" rel="noopener noreferrer">
                       <Download className="mr-2 h-4 w-4" />
-                      Download
+                      {t("orders.download")}
                     </a>
                   </Button>
                 </div>
@@ -430,7 +499,7 @@ export default function OrderDetail() {
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
                       <FileText className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">Translated Document</span>
+                      <span className="font-medium">{t("orders.translatedDocument")}</span>
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-sm truncate max-w-[60%]" title={order.translated_document_url.split("/").pop()?.split("?")[0] || "Translated Document"}>
@@ -439,7 +508,7 @@ export default function OrderDetail() {
                       <Button variant="outline" size="sm" asChild className="flex-shrink-0">
                         <a href={order.translated_document_url} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-2 h-4 w-4" />
-                          Download
+                          {t("orders.download")}
                         </a>
                       </Button>
                     </div>
@@ -451,11 +520,11 @@ export default function OrderDetail() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="text-sm font-medium">Source Language</div>
+                  <div className="text-sm font-medium">{t("orders.sourceLanguage")}</div>
                   <div>{order.source_language}</div>
                 </div>
                 <div>
-                  <div className="text-sm font-medium">Target Language</div>
+                  <div className="text-sm font-medium">{t("orders.targetLanguage")}</div>
                   <div>{order.target_language}</div>
                 </div>
               </div>
@@ -465,15 +534,15 @@ export default function OrderDetail() {
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-medium">Timeline</span>
+                  <span className="font-medium">{t("orders.timeline")}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="text-sm font-medium">Created</div>
+                    <div className="text-sm font-medium">{t("orders.created")}</div>
                     <div>{formatDate(order.created_at)}</div>
                   </div>
                   <div>
-                    <div className="text-sm font-medium">Deadline</div>
+                    <div className="text-sm font-medium">{t("orders.deadline")}</div>
                     <div>{formatDate(order.deadline)}</div>
                   </div>
                 </div>
@@ -482,7 +551,7 @@ export default function OrderDetail() {
               <Separator />
 
               <div className="space-y-2">
-                <div className="font-medium">Tags</div>
+                <div className="font-medium">{t("orders.tags")}</div>
                 <div className="flex flex-wrap gap-2">
                   {order.tags.map((tag) => (
                     <Badge key={tag} variant="secondary">
@@ -496,7 +565,7 @@ export default function OrderDetail() {
                 <>
                   <Separator />
                   <div className="space-y-2">
-                    <div className="font-medium">Comment</div>
+                    <div className="font-medium">{t("orders.comment")}</div>
                     <div className="text-sm">{order.comment}</div>
                   </div>
                 </>
@@ -507,20 +576,20 @@ export default function OrderDetail() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Analysis</CardTitle>
-                <CardDescription>Document analysis and cost breakdown</CardDescription>
+                <CardTitle>{t("orders.analysis")}</CardTitle>
+                <CardDescription>{t("orders.analysisDescription")}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {analysis ? (
                   <>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm font-medium">Word Count</div>
+                        <div className="text-sm font-medium">{t("orders.wordCount")}</div>
                         <div>{analysis.word_count}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">Complexity Score</div>
-                        <div>{analysis.complexity_score.toFixed(2)}</div>
+                        <div className="text-sm font-medium">{t("orders.complexityScore")}</div>
+                        <div>{formatComplexity(analysis.complexity_score)}</div>
                       </div>
                     </div>
 
@@ -528,11 +597,11 @@ export default function OrderDetail() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm font-medium">Estimated Hours</div>
-                        <div>{analysis.estimated_hours.toFixed(2)}</div>
+                        <div className="text-sm font-medium">{t("orders.estimatedHours")}</div>
+                        <div>{formatEstimatedTime(analysis.estimated_hours)}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">Cost</div>
+                        <div className="text-sm font-medium">{t("orders.cost")}</div>
                         <div className="font-bold">${order.cost.toFixed(2)}</div>
                       </div>
                     </div>
@@ -540,7 +609,7 @@ export default function OrderDetail() {
                     <Separator />
 
                     <div className="space-y-2">
-                      <div className="font-medium">Classification</div>
+                      <div className="font-medium">{t("orders.classification")}</div>
                       <div className="flex flex-wrap gap-2">
                         {analysis.classification.map((tag) => (
                           <Badge key={tag} variant="outline">
@@ -551,18 +620,18 @@ export default function OrderDetail() {
                     </div>
                   </>
                 ) : (
-                  <div className="text-center py-4 text-muted-foreground">No analysis data available</div>
+                  <div className="text-center py-4 text-muted-foreground">{t("orders.noAnalysisData")}</div>
                 )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>Translator</CardTitle>
+                <CardTitle>{t("orders.translator")}</CardTitle>
                 <CardDescription>
                   {assignment 
-                    ? "Assigned translator information" 
-                    : "No translator assigned yet"}
+                    ? t("orders.assignedTranslatorInfo")
+                    : t("orders.noTranslatorAssigned")}
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -573,7 +642,7 @@ export default function OrderDetail() {
                       <div>
                         <div className="font-medium">{assignment.translator.full_name}</div>
                         <div className="text-sm text-muted-foreground">
-                          Rating: {assignment.translator.rating.toFixed(1)}/100
+                          {t("orders.rating")}: {assignment.translator.rating.toFixed(1)}/100
                         </div>
                       </div>
                     </div>
@@ -582,19 +651,19 @@ export default function OrderDetail() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <div className="text-sm font-medium">Assigned</div>
+                        <div className="text-sm font-medium">{t("orders.assigned")}</div>
                         <div>{formatDate(assignment.assigned_at)}</div>
                       </div>
                       <div>
-                        <div className="text-sm font-medium">Completed</div>
-                        <div>{assignment.completed_at ? formatDate(assignment.completed_at) : "In progress"}</div>
+                        <div className="text-sm font-medium">{t("orders.completed")}</div>
+                        <div>{assignment.completed_at ? formatDate(assignment.completed_at) : t("orders.inProgress")}</div>
                       </div>
                     </div>
 
                     <Separator />
 
                     <div className="space-y-2">
-                      <div className="font-medium">Expertise</div>
+                      <div className="font-medium">{t("orders.expertise")}</div>
                       <div className="flex flex-wrap gap-2">
                         {assignment.translator.expertise.map((exp) => (
                           <Badge key={exp} variant="secondary">
@@ -608,7 +677,7 @@ export default function OrderDetail() {
                       <>
                         <Separator />
                         <div className="space-y-2">
-                          <div className="font-medium">Translator's Notes</div>
+                          <div className="font-medium">{t("orders.translatorsNotes")}</div>
                           <div className="p-3 bg-muted rounded-md text-sm">
                             {translationNotes.notes}
                           </div>
@@ -638,8 +707,8 @@ export default function OrderDetail() {
                           <Alert className="bg-red-50 border-red-200 py-2 px-3">
                             <XCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
                             <div className="text-sm">
-                              <h4 className="text-red-800 font-medium text-sm">Translator Declined Request</h4>
-                              <p className="text-red-700 text-xs">The previously assigned translator has declined your translation request. Please select a new translator below.</p>
+                              <h4 className="text-red-800 font-medium text-sm">{t("orders.translatorDeclined")}</h4>
+                              <p className="text-red-700 text-xs">{t("orders.translatorDeclinedDescription")}</p>
                             </div>
                           </Alert>
                           
@@ -653,44 +722,15 @@ export default function OrderDetail() {
                               htmlFor="automaticAssignment"
                               className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                             >
-                              Automatic Assignment (system will select the best translator)
+                              {t("orders.automaticAssignment")}
                             </label>
                           </div>
                           
                           {automaticAssignment && selectedTranslatorId && recommendedTranslators.length > 0 && (
                             <div className="rounded-lg bg-primary/5 p-3 border-l-4 border-primary mt-4">
                               <div className="text-sm flex items-center">
-                                <span className="font-medium mr-2">System selected:</span>
-                                <span>{availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}</span>
-                                {recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score && (
-                                  <span className="ml-auto text-xs text-primary font-medium flex items-center gap-1">
-                                    <div className="relative h-4 w-4 flex-shrink-0">
-                                      <svg className="h-4 w-4" viewBox="0 0 24 24">
-                                        <circle 
-                                          cx="12" 
-                                          cy="12" 
-                                          r="9" 
-                                          fill="none" 
-                                          stroke="#e2e8f0" 
-                                          strokeWidth="2.5"
-                                        />
-                                        <circle 
-                                          cx="12" 
-                                          cy="12" 
-                                          r="9" 
-                                          fill="none" 
-                                          stroke="currentColor" 
-                                          strokeWidth="2.5"
-                                          strokeLinecap="round"
-                                          strokeDasharray={`${Math.min(100, Math.round((recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score || 0) * 100)) * 0.565} 100`}
-                                          strokeDashoffset="0"
-                                          transform="rotate(-90 12 12)"
-                                        />
-                                      </svg>
-                                    </div>
-                                    {Math.round((recommendedTranslators.find(t => t.id === selectedTranslatorId)?.recommendation_score || 0) * 100)}% match
-                                  </span>
-                                )}
+                                <span className="font-medium mr-2">{t("orders.systemSelected")}</span>
+                                {availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}
                               </div>
                             </div>
                           )}
@@ -698,23 +738,23 @@ export default function OrderDetail() {
                           {!automaticAssignment && (
                             <>
                               <div className="flex justify-between items-center mt-4">
-                                <h4 className="text-sm font-medium">Available Translators</h4>
+                                <h4 className="text-sm font-medium">{t("orders.availableTranslators")}</h4>
                               </div>
                               
                               {/* Styled debug info */}
                               <div className="flex flex-wrap gap-2 mb-3 p-2 rounded-md bg-muted/30 border border-border">
                                 <div className="flex items-center">
-                                  <span className="text-xs font-medium text-muted-foreground mr-1">Available:</span>
+                                  <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.available")}</span>
                                   <span className="text-xs font-semibold">{availableTranslators.length}</span>
                                 </div>
                                 <div className="h-4 border-r border-border/50"></div>
                                 <div className="flex items-center">
-                                  <span className="text-xs font-medium text-muted-foreground mr-1">Recommended:</span>
+                                  <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.recommended")}</span>
                                   <span className="text-xs font-semibold">{recommendedTranslators.length}</span>
                                 </div>
                                 <div className="h-4 border-r border-border/50"></div>
                                 <div className="flex items-center">
-                                  <span className="text-xs font-medium text-muted-foreground mr-1">With language match:</span>
+                                  <span className="text-xs font-medium text-muted-foreground mr-1">{t("orders.withLanguageMatch")}</span>
                                   <span className="text-xs font-semibold">{availableTranslators.filter(t => t.hasLanguageMatch).length}</span>
                                 </div>
                               </div>
@@ -722,11 +762,11 @@ export default function OrderDetail() {
                               {fetchingTranslators ? (
                                 <div className="text-center py-3">
                                   <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                                  <p className="text-sm text-muted-foreground mt-1">Loading translators...</p>
+                                  <p className="text-sm text-muted-foreground mt-1">{t("orders.loadingTranslators")}</p>
                                 </div>
                               ) : filteredTranslators.length === 0 ? (
                                 <div className="text-center py-3 text-muted-foreground text-sm">
-                                  No translators available
+                                  {t("orders.noTranslatorsAvailable")}
                                 </div>
                               ) : (
                                 <ScrollArea className="h-[320px] rounded-md border bg-muted/10 p-2">
@@ -774,8 +814,8 @@ export default function OrderDetail() {
                                                 {hasLanguageMatch ? (
                                                   <span 
                                                     className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-green-50 text-green-600 border border-green-200" 
-                                                    title="Matches required languages"
-                                                    aria-label="This translator matches the required languages"
+                                                    title={t("orders.matchesRequiredLanguages")}
+                                                    aria-label={t("orders.matchesRequiredLanguages")}
                                                   >
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                                                       <circle cx="12" cy="12" r="10"></circle>
@@ -786,8 +826,8 @@ export default function OrderDetail() {
                                                 ) : (
                                                   <span 
                                                     className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-50 text-red-600 border border-red-200" 
-                                                    title="Does not match required languages"
-                                                    aria-label="This translator does not match the required languages"
+                                                    title={t("orders.doesNotMatchRequiredLanguages")}
+                                                    aria-label={t("orders.doesNotMatchRequiredLanguages")}
                                                   >
                                                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-3 h-3">
                                                       <circle cx="12" cy="12" r="10"></circle>
@@ -798,7 +838,7 @@ export default function OrderDetail() {
                                                 )}
                                                 {isRecommended && (
                                                   <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200 px-1.5 py-0 h-5">
-                                                    Recommended
+                                                    {t("orders.recommended")}
                                                   </Badge>
                                                 )}
                                                 {isRecommended && recommendationScore > 0 && (
@@ -842,7 +882,7 @@ export default function OrderDetail() {
                                           </div>
                                           
                                           <div className="mt-2">
-                                            <div className="text-xs text-muted-foreground mb-1">Languages:</div>
+                                            <div className="text-xs text-muted-foreground mb-1">{t("orders.languages")}</div>
                                             <div className="flex flex-wrap gap-1">
                                               {showLanguages.map(lang => (
                                                 <Badge key={lang} variant="secondary" className="text-xs px-2 py-0 h-5">
@@ -851,14 +891,14 @@ export default function OrderDetail() {
                                               ))}
                                               {!isExpanded && translator.languages.length > 5 && (
                                                 <span className="text-xs text-muted-foreground flex items-center">
-                                                  +{translator.languages.length - 5} more
+                                                  +{translator.languages.length - 5} {t("orders.more")}
                                                 </span>
                                               )}
                                             </div>
                                           </div>
                                           
                                           <div className="mt-3">
-                                            <div className="text-xs text-muted-foreground mb-1">Expertise:</div>
+                                            <div className="text-xs text-muted-foreground mb-1">{t("orders.expertise")}</div>
                                             <div className="flex flex-wrap gap-1">
                                               {showExpertise.map(exp => (
                                                 <Badge key={exp} variant="outline" className="text-xs px-2 py-0 h-5">
@@ -867,7 +907,7 @@ export default function OrderDetail() {
                                               ))}
                                               {!isExpanded && translator.expertise.length > 5 && (
                                                 <span className="text-xs text-muted-foreground flex items-center">
-                                                  +{translator.expertise.length - 5} more
+                                                  +{translator.expertise.length - 5} {t("orders.more")}
                                                 </span>
                                               )}
                                             </div>
@@ -880,7 +920,7 @@ export default function OrderDetail() {
                                                 className="text-xs text-primary hover:underline focus:outline-none"
                                                 type="button"
                                               >
-                                                {isExpanded ? 'Show less' : 'Show more'}
+                                                {isExpanded ? t("orders.showLess") : t("orders.showMore")}
                                               </button>
                                             </div>
                                           )}
@@ -894,7 +934,7 @@ export default function OrderDetail() {
                               {selectedTranslatorId && !automaticAssignment && (
                                 <div className="rounded-lg bg-primary/5 p-3 border-l-4 border-primary mt-4">
                                   <div className="text-sm flex items-center">
-                                    <span className="font-medium mr-2">Selected Translator:</span>
+                                    <span className="font-medium mr-2">{t("orders.selectedTranslator")}</span>
                                     {availableTranslators.find(t => t.id === selectedTranslatorId)?.full_name || ''}
                                   </div>
                                 </div>
@@ -914,17 +954,17 @@ export default function OrderDetail() {
                             {submitting ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                Assigning...
+                                {t("orders.assigning")}
                               </>
                             ) : (
-                              "Assign Translator"
+                              t("orders.assignTranslator")
                             )}
                           </Button>
                         </div>
                       </div>
                     ) : (
                       <div className="text-center py-4 text-muted-foreground">
-                        Your order is pending assignment to a translator
+                        {t("orders.pendingAssignment")}
                       </div>
                     )}
                   </>
