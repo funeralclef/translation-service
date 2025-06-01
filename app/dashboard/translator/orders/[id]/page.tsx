@@ -407,9 +407,11 @@ export default function TranslatorOrderDetail() {
                   <FileText className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{t("translatorJobs.orderDetails.document")}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div className="text-sm">{order.document_url.split("/").pop()?.split("?")[0] || "Document"}</div>
-                  <Button variant="outline" size="sm" asChild>
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                  <div className="text-sm truncate max-w-full sm:max-w-[60%]" title={order.document_url.split("/").pop()?.split("?")[0] || "Document"}>
+                    {order.document_url.split("/").pop()?.split("?")[0] || "Document"}
+                  </div>
+                  <Button variant="outline" size="sm" asChild className="flex-shrink-0 w-full sm:w-auto">
                     <a href={order.document_url} target="_blank" rel="noopener noreferrer">
                       <Download className="mr-2 h-4 w-4" />
                       {t("translatorJobs.orderDetails.download")}
@@ -420,7 +422,7 @@ export default function TranslatorOrderDetail() {
 
               <Separator />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="text-sm font-medium">{t("translatorJobs.orderDetails.sourceLanguage")}</div>
                   <div>{order.source_language}</div>
@@ -438,21 +440,21 @@ export default function TranslatorOrderDetail() {
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className="font-medium">{t("translatorJobs.orderDetails.timeline")}</span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <div className="text-sm font-medium">{t("translatorJobs.orderDetails.created")}</div>
                     <div>{formatDate(order.created_at)}</div>
                   </div>
                   <div>
                     <div className="text-sm font-medium">{t("translatorJobs.orderDetails.deadline")}</div>
-                    <div className="flex items-center">
-                      {formatDate(order.deadline)}
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                      <span>{formatDate(order.deadline)}</span>
                       {new Date(order.deadline) < new Date() ? (
-                        <Badge variant="destructive" className="ml-2">
+                        <Badge variant="destructive" className="w-fit">
                           {t("translatorJobs.orderDetails.overdue")}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="ml-2">
+                        <Badge variant="outline" className="w-fit">
                           {Math.ceil(
                             (new Date(order.deadline).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24),
                           )}{" "}
@@ -498,7 +500,7 @@ export default function TranslatorOrderDetail() {
               <CardContent className="space-y-4">
                 {analysis ? (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm font-medium">{t("translatorJobs.orderDetails.wordCount")}</div>
                         <div>{analysis.word_count}</div>
@@ -511,7 +513,7 @@ export default function TranslatorOrderDetail() {
 
                     <Separator />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                         <div className="text-sm font-medium">{t("translatorJobs.orderDetails.estimatedHours")}</div>
                         <div>{formatEstimatedTime(analysis.estimated_hours)}</div>
@@ -566,11 +568,11 @@ export default function TranslatorOrderDetail() {
                     <p className="text-sm text-muted-foreground mt-2 max-w-sm">
                       {t("translatorJobs.orderDetails.requestMessage")}
                     </p>
-                    <div className="flex gap-3 mt-6">
+                    <div className="flex flex-col sm:flex-row gap-3 mt-6">
                       <Button 
                         onClick={acceptRequest}
                         disabled={submitting}
-                        className="min-w-32"
+                        className="w-full sm:min-w-32 sm:w-auto"
                       >
                         {submitting ? (
                           <>
@@ -585,7 +587,7 @@ export default function TranslatorOrderDetail() {
                         variant="outline" 
                         onClick={declineRequest}
                         disabled={submitting}
-                        className="min-w-32"
+                        className="w-full sm:min-w-32 sm:w-auto"
                       >
                         {t("translatorJobs.orderDetails.decline")}
                       </Button>
@@ -599,7 +601,7 @@ export default function TranslatorOrderDetail() {
                       {t("translatorJobs.orderDetails.completedMessage")}
                     </p>
                     {order.translated_document_url && (
-                      <Button variant="outline" size="sm" className="mt-4" asChild>
+                      <Button variant="outline" size="sm" className="mt-4 w-full sm:w-auto" asChild>
                         <a href={order.translated_document_url} target="_blank" rel="noopener noreferrer">
                           <Download className="mr-2 h-4 w-4" />
                           {t("translatorJobs.orderDetails.downloadTranslatedDocument")}
