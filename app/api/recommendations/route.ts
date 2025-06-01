@@ -3,6 +3,10 @@ import { createServerComponentClient } from "@/utils/supabase/server";
 import { getHybridRecommendations } from "@/utils/recommendation-system";
 
 export async function POST(request: Request) {
+  console.log('🚀 RECOMMENDATIONS API: Starting request processing');
+  console.log('📍 VERCEL DEPLOYMENT NOTE: Server-side hybrid filtering logs are visible in Vercel Function Logs');
+  console.log('💡 TIP: Check your Vercel dashboard > Functions tab for detailed server-side recommendation logs');
+  
   try {
     const supabase = createServerComponentClient();
     const { orderId, customerId, useEmbeddings = false } = await request.json();

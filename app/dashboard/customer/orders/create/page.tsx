@@ -242,6 +242,16 @@ export default function CreateOrder() {
 
       // Call the analyze document API
       console.log("Calling analyze-document-alt API with URL:", documentUrl);
+      console.group('🔍 DOCUMENT ANALYSIS API CALL');
+      console.log('📊 Request Parameters:', {
+        endpoint: '/api/analyze-document-alt',
+        documentUrl,
+        sourceLanguage,
+        targetLanguage,
+        customer_id: user?.id,
+        timestamp: new Date().toISOString()
+      });
+      
       const response = await fetch("/api/analyze-document-alt", {
         method: "POST",
         headers: {
@@ -258,11 +268,27 @@ export default function CreateOrder() {
       // Try to parse the error message from the response
       if (!response.ok) {
         console.log("Response not ok:", response)
+        console.error('❌ API Response Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          url: response.url
+        });
+        console.groupEnd();
         const errorData = await response.json().catch((rr) => ({ error: "Failed to analyze document" }))
         throw new Error(errorData.error || "Failed to analyze document")
       }
 
       const analysisResult = await response.json()
+      console.log('✅ API Response Successful');
+      console.log('📈 Analysis Summary:', {
+        wordCount: analysisResult.wordCount || 0,
+        complexityScore: analysisResult.complexityScore || 0,
+        estimatedHours: analysisResult.estimatedHours || 0,
+        cost: analysisResult.cost || 0,
+        classificationTags: analysisResult.classification?.length || 0,
+        recommendedTranslators: analysisResult.recommendedTranslators?.length || 0
+      });
+      console.groupEnd();
       console.log("Analysis result received:", analysisResult)
 
       setOrderClassification(analysisResult.classification || [])
@@ -273,6 +299,66 @@ export default function CreateOrder() {
       
       // Store recommended translators separately without affecting the available translators list
       if (analysisResult.recommendedTranslators && analysisResult.recommendedTranslators.length > 0) {
+        // 🎯 CLIENT-SIDE RECOMMENDATION LOGGING 
+        console.group('🌐 ORDER CREATION - HYBRID RECOMMENDATION RESULTS');
+        console.log('📊 API Response Data:', {
+          totalRecommendations: analysisResult.recommendedTranslators.length,
+          orderInfo: {
+            sourceLanguage,
+            targetLanguage,
+            customerId: user?.id
+          }
+        });
+        
+        console.log('📈 TOP RECOMMENDATIONS:');
+        console.table(analysisResult.recommendedTranslators.slice(0, 10).map((translator: any, index: number) => ({
+          'Rank': index + 1,
+          'Name': translator.full_name,
+          'Hybrid Score': translator.recommendation_score?.toFixed(4) || '0.0000',
+          'Content Score': translator.content_score?.toFixed(4) || '0.0000',
+          'Collaborative Score': translator.collaborative_score?.toFixed(4) || '0.0000',
+          'Rating': translator.rating,
+          'Languages': translator.languages?.join(', ') || 'N/A'
+        })));
+        
+        console.log('🎯 DETAILED BREAKDOWN:');
+        analysisResult.recommendedTranslators.slice(0, 5).forEach((translator: any, index: number) => {
+          console.group(`#${index + 1} ${translator.full_name}`);
+          console.log('📊 Scores:', {
+            hybridScore: translator.recommendation_score?.toFixed(4) || '0.0000',
+            contentScore: translator.content_score?.toFixed(4) || '0.0000',
+            collaborativeScore: translator.collaborative_score?.toFixed(4) || '0.0000'
+          });
+          console.log('👤 Profile:', {
+            rating: translator.rating,
+            languages: translator.languages,
+            expertise: translator.expertise,
+            totalOrders: translator.total_orders || 'N/A',
+            completedOrders: translator.completed_orders || 'N/A'
+          });
+          console.groupEnd();
+        });
+        
+        // Calculate recommendation quality metrics
+        const avgHybridScore = analysisResult.recommendedTranslators.reduce((sum: number, t: any) => sum + (t.recommendation_score || 0), 0) / analysisResult.recommendedTranslators.length;
+        const topScore = analysisResult.recommendedTranslators[0]?.recommendation_score || 0;
+        const hasCollaborativeData = analysisResult.recommendedTranslators.some((t: any) => (t.collaborative_score || 0) > 0);
+        
+        console.log('📊 QUALITY METRICS:', {
+          averageHybridScore: avgHybridScore.toFixed(4),
+          topScore: topScore.toFixed(4),
+          hasCollaborativeData,
+          recommendationStrength: topScore > 0.5 ? 'Strong' : topScore > 0.3 ? 'Moderate' : 'Weak',
+          filteringType: hasCollaborativeData ? 'Hybrid (Content + Collaborative)' : 'Content-Based Only'
+        });
+        
+        console.log('💡 RECOMMENDATION SYSTEM INSIGHTS:');
+        console.log('   ✅ This shows the client-side view of hybrid filtering results');
+        console.log('   🔍 Server-side detailed logs are available in Vercel function logs');
+        console.log('   📊 These scores combine content-based (60%) + collaborative (40%) filtering');
+        console.log('   🎯 Higher scores indicate better translator-order matches');
+        console.groupEnd();
+        
         // Log detailed info about the recommended translators
         console.log(`Received ${analysisResult.recommendedTranslators.length} recommended translators`);
         
@@ -295,6 +381,15 @@ export default function CreateOrder() {
         console.log(`Using ${filteredRecommendations.length} recommended translators that are in the available list`);
         setRecommendedTranslators(filteredRecommendations);
       } else {
+        console.group('🌐 ORDER CREATION - NO RECOMMENDATIONS');
+        console.log('⚠️ No recommendations returned from hybrid filtering');
+        console.log('💡 This could mean:');
+        console.log('   - No translators match the language pair');
+        console.log('   - All translators have 0 scores');
+        console.log('   - Error in recommendation system');
+        console.log('   - First time customer (no collaborative data)');
+        console.groupEnd();
+        
         setRecommendedTranslators([]);
         console.log("No recommended translators received from analysis");
       }

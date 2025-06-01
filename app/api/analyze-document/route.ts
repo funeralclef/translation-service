@@ -5,6 +5,10 @@ import { analyzeDocument } from "@/utils/openai"
 import { getHybridRecommendations } from "@/utils/recommendation-system"
 
 export async function POST(request: Request) {
+  console.log('🚀 ANALYZE-DOCUMENT API: Starting request processing');
+  console.log('📍 VERCEL DEPLOYMENT NOTE: Server-side hybrid filtering logs are visible in Vercel Function Logs');
+  console.log('💡 TIP: Check your Vercel dashboard > Functions tab for detailed server-side recommendation logs');
+  
   try {
     console.log("API: Starting document analysis")
     const supabase = createServerComponentClient()
