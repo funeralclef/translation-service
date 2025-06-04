@@ -24,23 +24,23 @@ EchoPulse - це система підтримки прийняття рішен
 ## 🚀 Основний функціонал
 
 ### 👥 Для клієнтів:
-- ✅ Завантаження документів для перекладу
-- 🌐 Вибір мов перекладу
-- ⏰ Встановлення термінів виконання
-- 📊 Відстеження статусу замовлень
-- 💰 Автоматичний розрахунок вартості
-- 📑 Аналіз тематики документів
-- 🎯 Рекомендаційна система для підбору перекладачів
+- Завантаження документів для перекладу
+- Вибір мов перекладу
+- Встановлення термінів виконання
+- Відстеження статусу замовлень
+- Автоматичний розрахунок вартості
+- Аналіз тематики документів
+- Рекомендаційна система для підбору перекладачів
 
 ### 👨‍💼 Для перекладачів:
-- 🔍 Пошук замовлень відповідно до навичок
-- 📈 Автоматична класифікація складності замовлень
-- 📑 Аналіз тематики документів
-- 🎯 Рекомендаційна система для підбору завдань
+- Пошук замовлень відповідно до навичок
+- Автоматична класифікація складності замовлень
+- Аналіз тематики документів
+- Рекомендаційна система для підбору завдань
 
 ### 🛠️ Для адміністраторів:
-- 👤 Управління користувачами
-- 📋 Моніторинг замовлень
+- Управління користувачами
+- Моніторинг замовлень
 
 ## 🤖 ШІ-функції
 
@@ -177,23 +177,23 @@ EchoPulse is a decision support system developed specifically for translation bu
 ## 🚀 Key Features
 
 ### 👥 For Clients:
-- ✅ Upload documents for translation
-- 🌐 Select source and target languages
-- ⏰ Set deadlines
-- 📊 Track order status
-- 💰 Automatic cost estimation
-- 📑 Document topic analysis
-- 🎯 Translator recommendation system
+- Upload documents for translation
+- Select source and target languages
+- Set deadlines
+- Track order status
+- Automatic cost estimation
+- Document topic analysis
+- Translator recommendation system
 
 ### 👨‍💼 For Translators:
-- 🔍 Search for orders based on skills
-- 📈 Automatic complexity classification
-- 📑 Topic analysis
-- 🎯 Task recommendation system
+- Search for orders based on skills
+- Automatic complexity classification
+- Topic analysis
+- Task recommendation system
 
 ### 🛠️ For Admins:
-- 👤 User management
-- 📋 Order monitoring
+- User management
+- Order monitoring
 
 ## 🤖 AI Features
 
