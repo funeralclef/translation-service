@@ -16,7 +16,7 @@
 
 EchoPulse - це система підтримки прийняття рішень, розроблена спеціально для бюро перекладів. Система забезпечує автоматизацію процесів класифікації, оцінки складності та тематики перекладацьких замовлень, а також сприяє ефективному розподілу завдань між перекладачами.
 
-### 🎓 Дипломна робота
+### 🎓 Кваліфікаційна дипломна робота бакалавра
 **Тема:** "Система підтримки прийняття рішень для бюро перекладів"
 
 **Мета роботи:** Розробка системи підтримки прийняття рішень для бюро перекладів, яка забезпечить автоматизацію процесів класифікації, оцінки складності та тематики замовлень, а також сприятиме ефективному розподілу завдань між перекладачами.
@@ -169,7 +169,7 @@ npm run dev
 
 EchoPulse is a decision support system developed specifically for translation bureaus. It automates the classification of translation orders, assesses their complexity and subject matter, and enables efficient task distribution among translators.
 
-### 🎓 Thesis Project
+### 🎓 Qualification Bachelor's Thesis
 **Title:** "Decision Support System for a Translation Bureau"
 
 **Goal:** To develop a decision support system for translation agencies that automates the classification of orders by complexity and subject, and improves the efficiency of task assignment to translators.
@@ -253,7 +253,7 @@ This project is academic and was developed as part of a thesis. All rights reser
 
 ## 👨‍💻 Author
 
-**Denys Veriiemchuk** – Thesis Project  
+**Denys Veriiemchuk** – Qualification Bachelor's Thesis 
 - University: Taras Shevchenko National University of Kyiv  
 - Faculty: Information Technology  
 - Specialty: Computer Science
