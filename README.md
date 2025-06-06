@@ -14,12 +14,10 @@
 
 ## 📄 Про проект
 
-EchoPulse - це система підтримки прийняття рішень, розроблена спеціально для бюро перекладів. Система забезпечує автоматизацію процесів класифікації, оцінки складності та тематики перекладацьких замовлень, а також сприяє ефективному розподілу завдань між перекладачами.
+EchoPulse - це система підтримки прийняття рішень для бюро перекладів. Система забезпечує автоматизацію процесів класифікації, оцінки складності та тематики перекладацьких замовлень, а також сприяє ефективному розподілу завдань між перекладачами.
 
 ### 🎓 Кваліфікаційна дипломна робота бакалавра
 **Тема:** "Система підтримки прийняття рішень для бюро перекладів"
-
-**Мета роботи:** Розробка системи підтримки прийняття рішень для бюро перекладів, яка забезпечить автоматизацію процесів класифікації, оцінки складності та тематики замовлень, а також сприятиме ефективному розподілу завдань між перекладачами.
 
 ## 🚀 Основний функціонал
 
@@ -67,11 +65,6 @@ EchoPulse - це система підтримки прийняття рішен
 - **OpenAI API** - обробка природної мови
 - **Mammoth.js** - парсинг DOCX документів
 
-### Development Tools
-- **ESLint** - лінтинг коду
-- **PostCSS** - обробка CSS
-- **Autoprefixer** - автоматичні префікси
-
 ## 📊 Особливості системи
 
 ### 🔍 Автоматична класифікація замовлень
@@ -105,53 +98,6 @@ EchoPulse - це система підтримки прийняття рішен
 - Факультет: Інформаційних технологій
 - Спеціальність: Комп'ютерні науки
 
-## 🚀 Швидкий старт
-
-### Передумови
-- Node.js 18+ 
-- npm/yarn/pnpm
-- Supabase проект
-- OpenAI API ключ
-
-### Встановлення
-
-1. **Клонування репозиторію**
-```bash
-git clone https://github.com/your-username/echopulse-diploma.git
-cd echopulse-diploma
-```
-
-2. **Встановлення залежностей**
-```bash
-npm install
-# або
-yarn install
-# або
-pnpm install
-```
-
-3. **Налаштування змінних середовища**
-
-Створіть файл `.env.local` у корені проекту:
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Environment
-NODE_ENV=development
-```
-
-4. **Запуск проекту**
-```bash
-npm run dev
-```
-
-Відкрийте [http://localhost:3000](http://localhost:3000) у браузері.
-
 
 ---
 
@@ -167,12 +113,10 @@ npm run dev
 
 ## 📄 About the Project
 
-EchoPulse is a decision support system developed specifically for translation bureaus. It automates the classification of translation orders, assesses their complexity and subject matter, and enables efficient task distribution among translators.
+EchoPulse is a decision support system for translation bureaus. It automates the classification of translation orders, assesses their complexity and subject matter, and enables efficient task distribution among translators.
 
 ### 🎓 Qualification Bachelor's Thesis
 **Title:** "Decision Support System for a Translation Bureau"
-
-**Goal:** To develop a decision support system for translation agencies that automates the classification of orders by complexity and subject, and improves the efficiency of task assignment to translators.
 
 ## 🚀 Key Features
 
@@ -220,11 +164,6 @@ The system uses AI to:
 - **OpenAI API** – natural language processing
 - **Mammoth.js** – DOCX file parsing
 
-### Development Tools
-- **ESLint** – code linting
-- **PostCSS** – CSS processing
-- **Autoprefixer** – automatic vendor prefixes
-
 ## 📊 System Capabilities
 
 ### 🔍 Automatic Order Classification
@@ -258,49 +197,3 @@ This project is academic and was developed as part of a thesis. All rights reser
 - Faculty: Information Technology  
 - Specialty: Computer Science
 
-## 🚀 Quick Start
-
-### Requirements
-- Node.js 18+  
-- npm/yarn/pnpm  
-- Supabase project  
-- OpenAI API key
-
-### Installation
-
-1. **Clone the repository**
-```bash
-git clone https://github.com/your-username/echopulse-diploma.git
-cd echopulse-diploma
-```
-
-2. **Install dependencies**
-```bash
-npm install
-# or
-yarn install
-# or
-pnpm install
-```
-
-3. **Set environment variables**
-Create a .env.local file in the project root:
-
-```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url_here
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key_here
-
-# OpenAI
-OPENAI_API_KEY=your_openai_api_key_here
-
-# Environment
-NODE_ENV=development
-```
-
-4. Run the development server
-```bash
-npm run dev
-```
-
-Open http://localhost:3000 in your browser.
